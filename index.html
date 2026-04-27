@@ -277,8 +277,19 @@ textarea{resize:vertical;min-height:60px}
     <button class="btn btn-primary" onclick="saveSettings()">Save Goals</button>
   </div>
   <div class="card"><div class="card-title">Training Baseline</div><p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">Set your starting max reps. The plan scales from here to 200.</p><div id="baseline-inputs"></div><button class="btn btn-primary" onclick="saveBaselines()">Save Baselines</button></div>
+  <div class="card">
+    <div class="card-title">Google Sheets Sync</div>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">Connect to Google Sheets for backup and push notifications.</p>
+    <div class="form-group"><label class="form-label">Apps Script URL</label><input type="url" id="set-sync-url" value="https://script.google.com/macros/s/AKfycbx_FaFrq76SnLlx63zppuAAPCR0D4fkke0fABuVJR2OLg7GaHCsquT19Tv4vTbDrZwS/exec"></div>
+    <div class="form-group"><label class="form-label">ntfy.sh Topic</label><input type="text" id="set-ntfy-topic" placeholder="fittrack-tanner-abc123"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="saveSyncSettings()" style="flex:1">Save Sync Settings</button>
+      <button class="btn btn-secondary" onclick="fullSync()" style="flex:1">Sync All Data Now</button>
+    </div>
+    <div id="sync-status" style="font-size:12px;color:var(--text-dim);margin-top:8px;text-align:center"></div>
+  </div>
   <div class="card"><div class="card-title">Data</div><div style="display:flex;flex-direction:column;gap:8px"><button class="btn btn-secondary" onclick="exportCSV()">Export All Data (CSV)</button><button class="btn btn-danger" onclick="confirmClear()">Clear All Data</button></div></div>
-  <div style="text-align:center;margin-top:24px"><p style="font-size:12px;color:var(--text-dim)">FitTrack v3.0 — Jackson Fitness Tracker</p></div>
+  <div style="text-align:center;margin-top:24px"><p style="font-size:12px;color:var(--text-dim)">FitTrack v4.0 — Jackson Fitness Tracker</p></div>
 </div>
 </div><!-- /app -->
 
@@ -312,6 +323,46 @@ function getBBLogs(){return load('bbLogs',{})}
 function getMealLogs(){return load('mealLogs',{})}
 function getBaselines(){return load('baselines',{pushups:30,squats:40,lunges:30,jumpingJacks:50,scissorsKicks:30,plankSec:30})}
 function todayStr(){return new Date().toISOString().split('T')[0]}
+function getSyncSettings(){return load('syncSettings',{url:'https://script.google.com/macros/s/AKfycbx_FaFrq76SnLlx63zppuAAPCR0D4fkke0fABuVJR2OLg7GaHCsquT19Tv4vTbDrZwS/exec',ntfyTopic:''})}
+
+// ═══════════════════════════════════════════════════════════
+//  GOOGLE SHEETS SYNC
+// ═══════════════════════════════════════════════════════════
+function syncToSheet(type, payload){
+  const ss=getSyncSettings();
+  if(!ss.url)return; // sync not configured
+  const body=JSON.stringify({type,date:payload.date||'',payload});
+  fetch(ss.url,{method:'POST',body,mode:'no-cors'}).then(()=>{
+    updateSyncStatus('Synced '+type+' — '+new Date().toLocaleTimeString());
+  }).catch(err=>{
+    updateSyncStatus('Sync error: '+err.message);
+  });
+}
+function updateSyncStatus(msg){
+  const el=document.getElementById('sync-status');
+  if(el)el.textContent=msg;
+  save('lastSyncMsg',msg);
+}
+function fullSync(){
+  const ss=getSyncSettings();
+  if(!ss.url){toast('Set your Apps Script URL first');return}
+  updateSyncStatus('Syncing all data...');
+  const body=JSON.stringify({type:'full',daily:getDailyLogs(),meals:getMealLogs(),bb:getBBLogs()});
+  fetch(ss.url,{method:'POST',body,mode:'no-cors'}).then(()=>{
+    updateSyncStatus('Full sync complete — '+new Date().toLocaleTimeString());
+    toast('All data synced to Google Sheets ✓');
+  }).catch(err=>{
+    updateSyncStatus('Sync error: '+err.message);
+    toast('Sync failed — check URL');
+  });
+}
+function saveSyncSettings(){
+  const url=document.getElementById('set-sync-url').value.trim();
+  const topic=document.getElementById('set-ntfy-topic').value.trim();
+  save('syncSettings',{url,ntfyTopic:topic});
+  toast('Sync settings saved ✓');
+  if(url)updateSyncStatus('Ready to sync');
+}
 
 // ═══════════════════════════════════════════════════════════
 //  CALORIE ESTIMATION
@@ -672,6 +723,7 @@ function saveLog(){
   const logs=getDailyLogs(),w=parseFloat(document.getElementById('log-weight').value);
   logs[date]={weight:isNaN(w)?(logs[date]?.weight||null):w,workouts:getSelectedChips(),drink:document.getElementById('log-drink').checked,snack:document.getElementById('log-snack').checked,notes:document.getElementById('log-notes').value.trim(),ts:Date.now()};
   save('dailyLogs',logs);
+  syncToSheet('daily',{date,...logs[date]});
   const{pts,breakdown}=calcDayPoints(date),mult=getMultiplierForDate(date);
   const nm=getMedals().filter(m=>m.earned&&!mb.includes(m.id));
   toast(`Log saved ✓  +${Math.round(pts*mult)} pts`,true);showPointsPopup(pts,breakdown,nm);renderRecentLogs();
@@ -696,13 +748,15 @@ function addMeal(){
   const meals=getMealLogs();if(!meals[date])meals[date]=[];
   meals[date].push({food,cal:cal||0,type,time:new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),id:Date.now()});
   save('mealLogs',meals);
+  syncToSheet('meals',{date,meals:meals[date]});
   document.getElementById('meal-food').value='';document.getElementById('meal-cals').value='';
   document.getElementById('cal-estimate-hint').style.display='none';
   toast(cal>0?`Added: ${food} (~${cal} cal)`:`Added: ${food}`,false);renderMealList();
 }
 function deleteMeal(date,id){
   const meals=getMealLogs();if(!meals[date])return;
-  meals[date]=meals[date].filter(m=>m.id!==id);save('mealLogs',meals);renderMealList();
+  meals[date]=meals[date].filter(m=>m.id!==id);save('mealLogs',meals);
+  syncToSheet('meals',{date,meals:meals[date]});renderMealList();
 }
 function renderMealList(){
   const date=document.getElementById('meal-date').value;
@@ -785,6 +839,7 @@ function saveBBLog(){
   });
   if(!hasData){toast('Add at least one set');return}
   logs[date]=entry;save('bbLogs',logs);
+  syncToSheet('bb',{date,exercises:entry});
   const dl=getDailyLogs();if(!dl[date])dl[date]={workouts:[],ts:Date.now()};if(!dl[date].workouts)dl[date].workouts=[];
   if(!dl[date].workouts.includes('blackbelt-prep')){dl[date].workouts.push('blackbelt-prep');save('dailyLogs',dl)}
   const{pts,breakdown}=calcDayPoints(date),mult=getMultiplierForDate(date);
@@ -894,6 +949,10 @@ function initSettings(){
   const s=getSettings();document.getElementById('set-start-weight').value=s.startWeight;document.getElementById('set-goal-weight').value=s.goalWeight;
   document.getElementById('set-test-date').value=s.testDate;document.getElementById('set-sessions-week').value=s.sessionsPerWeek||3;
   document.getElementById('set-cal-target').value=s.calTarget||2000;
+  const ss=getSyncSettings();
+  document.getElementById('set-sync-url').value=ss.url||'';
+  document.getElementById('set-ntfy-topic').value=ss.ntfyTopic||'';
+  document.getElementById('sync-status').textContent=load('lastSyncMsg','')||'';
   document.getElementById('baseline-inputs').innerHTML=EXERCISES.map(ex=>{const u=ex.key==='plankSec'?'seconds':'reps';
     return`<div class="exercise-row"><span>${ex.icon}</span><span class="exercise-name">${ex.name} <span style="font-size:11px;color:var(--text-dim)">(${u})</span></span><input type="number" class="exercise-input" id="baseline-${ex.key}" value="${getBaselines()[ex.key]}" inputmode="numeric" min="0"></div>`}).join('');
 }

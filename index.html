@@ -164,12 +164,6 @@ textarea{resize:vertical;min-height:60px}
     <div class="progress-bar" style="margin-top:8px"><div class="progress-fill accent" id="countdown-progress" style="width:0%"></div></div>
     <div class="metric-sub" style="text-align:center;margin-top:6px" id="countdown-sub"></div>
   </div>
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center"><div class="card-title" style="margin-bottom:0">This Week's Plan</div><div class="metric-sub" id="week-label"></div></div>
-    <div style="margin-top:10px"><div style="font-size:13px;color:var(--text-dim);margin-bottom:6px">Sessions this week</div><div class="session-dots" id="session-dots"></div></div>
-    <div style="margin-top:8px" id="this-week-targets"></div>
-    <div style="margin-top:8px;padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">Per Session Target</div><div id="per-session-targets" style="font-size:13px"></div></div>
-  </div>
   <button class="btn btn-primary" style="margin-top:8px" onclick="showPage('log')">Log Today</button>
 </div>
 
@@ -460,9 +454,10 @@ function getMedals(){
   const bb=getBBLogs(),dl=getDailyLogs(),medals=[];
   EXERCISES.forEach(ex=>{
     const best=getPersonalBest(ex.key),goal=GOAL_REPS[ex.key],pct=best/goal,n=ex.name;
-    medals.push({id:ex.key+'-bronze',name:n+' Bronze',icon:'🥉',desc:`${Math.round(goal*.5)} ${ex.key==='plankSec'?'sec':'reps'}`,earned:pct>=.5,bonus:50});
-    medals.push({id:ex.key+'-silver',name:n+' Silver',icon:'🥈',desc:`${Math.round(goal*.75)} ${ex.key==='plankSec'?'sec':'reps'}`,earned:pct>=.75,bonus:100});
-    medals.push({id:ex.key+'-gold',name:n+' Gold',icon:'🥇',desc:`${goal} ${ex.key==='plankSec'?'sec':'reps'}`,earned:pct>=1,bonus:200});
+    const u=ex.key==='plankSec'?'sec':'total reps';
+    medals.push({id:ex.key+'-bronze',name:n+' Bronze',icon:'🥉',desc:`${Math.round(goal*.5)} ${u} in a session`,earned:pct>=.5,bonus:50});
+    medals.push({id:ex.key+'-silver',name:n+' Silver',icon:'🥈',desc:`${Math.round(goal*.75)} ${u} in a session`,earned:pct>=.75,bonus:100});
+    medals.push({id:ex.key+'-gold',name:n+' Gold',icon:'🥇',desc:`${goal} ${u} in a session`,earned:pct>=1,bonus:200});
   });
   const st=calcStreaks();
   medals.push({id:'clean-7',name:'Iron Will',icon:'🛡️',desc:'7-day clean streak',earned:st.bestClean>=7,bonus:75});
@@ -481,6 +476,30 @@ function getMedals(){
   medals.push({id:'sessions-10',name:'Getting Started',icon:'🌱',desc:'10 training sessions',earned:sc>=10,bonus:50});
   medals.push({id:'sessions-50',name:'Halfway Hero',icon:'🦸',desc:'50 training sessions',earned:sc>=50,bonus:200});
   medals.push({id:'sessions-100',name:'Century Club',icon:'💯',desc:'100 training sessions',earned:sc>=100,bonus:500});
+
+  // Full-session medals (all exercises in one session)
+  let fullAt50=0,fullAt75=0,fullAt100=0;
+  Object.values(bb).forEach(log=>{
+    const pcts=EXERCISES.map(ex=>log[ex.key]?getTotalReps(log[ex.key])/GOAL_REPS[ex.key]:0);
+    if(pcts.every(p=>p>=.5))fullAt50++;
+    if(pcts.every(p=>p>=.75))fullAt75++;
+    if(pcts.every(p=>p>=1))fullAt100++;
+  });
+  medals.push({id:'full-50',name:'Full Circuit',icon:'🔄',desc:'All exercises at 50% in one session',earned:fullAt50>=1,bonus:150});
+  medals.push({id:'full-75',name:'Battle Ready',icon:'⚔️',desc:'All exercises at 75% in one session',earned:fullAt75>=1,bonus:300});
+  medals.push({id:'full-100',name:'Test Simulation',icon:'🥋',desc:'All exercises at goal in one session!',earned:fullAt100>=1,bonus:1000});
+  medals.push({id:'full-100x3',name:'Proven Ready',icon:'🏅',desc:'3 full test simulations',earned:fullAt100>=3,bonus:1500});
+
+  // Set efficiency medals (bigger sets = fewer rest breaks = faster finish)
+  let bigSets=0;
+  Object.values(bb).forEach(log=>{
+    EXERCISES.filter(ex=>ex.key!=='plankSec').forEach(ex=>{
+      if(log[ex.key]){const m=getMaxSet(log[ex.key]);if(m>=50)bigSets++}
+    });
+  });
+  medals.push({id:'bigset-1',name:'Power Set',icon:'💥',desc:'50+ reps in a single set',earned:bigSets>=1,bonus:75});
+  medals.push({id:'bigset-10',name:'Set Machine',icon:'⚡',desc:'10 sets of 50+ reps',earned:bigSets>=10,bonus:200});
+
   return medals;
 }
 function getMedalBonusPoints(){return getMedals().filter(m=>m.earned).reduce((s,m)=>s+m.bonus,0)}
@@ -582,7 +601,7 @@ function renderToday(){
     const cl=!tl.drink&&!tl.snack;
     document.getElementById('today-night-status').innerHTML=tl.drink===undefined?'<span style="color:var(--text-dim)">Not logged</span>':cl?'<span style="color:var(--green)">✓ Clean</span>':'<span style="color:var(--red)">✗ Slipped</span>';
   }else{document.getElementById('today-workout-status').innerHTML='<span style="color:var(--text-dim)">Not logged</span>';document.getElementById('today-night-status').innerHTML='<span style="color:var(--text-dim)">Not logged</span>'}
-  renderStreaks();renderCountdown();renderWeekTargets();
+  renderStreaks();renderCountdown();
 }
 function renderLevelBar(){
   const xp=getTotalPoints(),lvl=getLevel(xp),nxt=getNextLevel(xp),tp=getTodayPoints(),m=getMultiplier();

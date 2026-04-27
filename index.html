@@ -258,8 +258,8 @@ textarea{resize:vertical;min-height:60px}
   </div>
   <div id="progress-tab-weight">
     <div class="card"><div class="card-title">Weight Trend</div><canvas class="mini-chart" id="weight-chart"></canvas></div>
-    <div class="grid-2"><div class="card" style="text-align:center"><div class="card-title">Starting</div><div style="font-size:24px;font-weight:700" id="prog-start-weight">200</div><div class="metric-sub">lbs</div></div><div class="card" style="text-align:center"><div class="card-title">Current</div><div style="font-size:24px;font-weight:700" id="prog-current-weight">—</div><div class="metric-sub">lbs</div></div></div>
-    <div class="card" style="text-align:center"><div class="card-title">Total Lost</div><div style="font-size:32px;font-weight:800;color:var(--green)" id="prog-total-lost">0</div><div class="metric-sub">of 15 lbs goal</div><div class="progress-bar" style="margin-top:8px"><div class="progress-fill green" id="prog-weight-bar" style="width:0%"></div></div></div>
+    <div class="grid-2"><div class="card" style="text-align:center"><div class="card-title">Starting</div><div style="font-size:24px;font-weight:700" id="prog-start-weight">210</div><div class="metric-sub">lbs</div></div><div class="card" style="text-align:center"><div class="card-title">Current</div><div style="font-size:24px;font-weight:700" id="prog-current-weight">—</div><div class="metric-sub">lbs</div></div></div>
+    <div class="card" style="text-align:center"><div class="card-title">Total Lost</div><div style="font-size:32px;font-weight:800;color:var(--green)" id="prog-total-lost">0</div><div class="metric-sub">of 25 lbs goal</div><div class="progress-bar" style="margin-top:8px"><div class="progress-fill green" id="prog-weight-bar" style="width:0%"></div></div></div>
   </div>
   <div id="progress-tab-habits" style="display:none">
     <div class="card"><div class="card-title">Late-Night Habits — Last 30 Days</div><canvas class="mini-chart" id="habits-chart" style="height:150px"></canvas></div>
@@ -275,7 +275,7 @@ textarea{resize:vertical;min-height:60px}
 <div class="page" id="page-settings">
   <h2>Settings</h2>
   <div class="card"><div class="card-title">Goals</div>
-    <div class="form-group"><label class="form-label">Starting Weight (lbs)</label><input type="number" id="set-start-weight" value="200" step="0.1"></div>
+    <div class="form-group"><label class="form-label">Starting Weight (lbs)</label><input type="number" id="set-start-weight" value="210" step="0.1"></div>
     <div class="form-group"><label class="form-label">Goal Weight (lbs)</label><input type="number" id="set-goal-weight" value="185" step="0.1"></div>
     <div class="form-group"><label class="form-label">Blackbelt Test Date</label><input type="date" id="set-test-date" value="2026-12-05"></div>
     <div class="form-group"><label class="form-label">Sessions Per Week</label><select id="set-sessions-week"><option value="2">2 sessions</option><option value="3" selected>3 sessions (recommended)</option><option value="4">4 sessions</option><option value="5">5 sessions</option></select></div>
@@ -312,7 +312,7 @@ const PLAN_START=new Date('2026-05-01T00:00:00');
 
 function load(k,fb){try{const v=localStorage.getItem('ft_'+k);return v?JSON.parse(v):fb}catch{return fb}}
 function save(k,v){localStorage.setItem('ft_'+k,JSON.stringify(v))}
-function getSettings(){return load('settings',{startWeight:200,goalWeight:185,testDate:'2026-12-05',sessionsPerWeek:3,calTarget:2000})}
+function getSettings(){return load('settings',{startWeight:210,goalWeight:185,testDate:'2026-12-05',sessionsPerWeek:3,calTarget:2000})}
 function getDailyLogs(){return load('dailyLogs',{})}
 function getBBLogs(){return load('bbLogs',{})}
 function getMealLogs(){return load('mealLogs',{})}
@@ -474,7 +474,9 @@ function getMedals(){
   const s=getSettings(),lw=getLatestWeight(dl),lost=lw?s.startWeight-lw:0;
   medals.push({id:'weight-5',name:'First 5',icon:'⚖️',desc:'Lost 5 lbs',earned:lost>=5,bonus:100});
   medals.push({id:'weight-10',name:'Double Digits',icon:'🔥',desc:'Lost 10 lbs',earned:lost>=10,bonus:200});
-  medals.push({id:'weight-15',name:'Goal Crusher',icon:'🏆',desc:'Hit 185 lbs goal',earned:lost>=15,bonus:500});
+  medals.push({id:'weight-15',name:'Halfway There',icon:'⚡',desc:'Lost 15 lbs',earned:lost>=15,bonus:300});
+  medals.push({id:'weight-20',name:'Twenty Down',icon:'💪',desc:'Lost 20 lbs',earned:lost>=20,bonus:400});
+  medals.push({id:'weight-25',name:'Goal Crusher',icon:'🏆',desc:'Hit 185 lbs goal',earned:lost>=25,bonus:500});
   const sc=Object.keys(bb).length;
   medals.push({id:'sessions-10',name:'Getting Started',icon:'🌱',desc:'10 training sessions',earned:sc>=10,bonus:50});
   medals.push({id:'sessions-50',name:'Halfway Hero',icon:'🦸',desc:'50 training sessions',earned:sc>=50,bonus:200});
@@ -876,7 +878,7 @@ function initSettings(){
   document.getElementById('baseline-inputs').innerHTML=EXERCISES.map(ex=>{const u=ex.key==='plankSec'?'seconds':'reps';
     return`<div class="exercise-row"><span>${ex.icon}</span><span class="exercise-name">${ex.name} <span style="font-size:11px;color:var(--text-dim)">(${u})</span></span><input type="number" class="exercise-input" id="baseline-${ex.key}" value="${getBaselines()[ex.key]}" inputmode="numeric" min="0"></div>`}).join('');
 }
-function saveSettings(){save('settings',{startWeight:parseFloat(document.getElementById('set-start-weight').value)||200,goalWeight:parseFloat(document.getElementById('set-goal-weight').value)||185,testDate:document.getElementById('set-test-date').value||'2026-12-05',sessionsPerWeek:parseInt(document.getElementById('set-sessions-week').value)||3,calTarget:parseInt(document.getElementById('set-cal-target').value)||2000});toast('Goals saved ✓')}
+function saveSettings(){save('settings',{startWeight:parseFloat(document.getElementById('set-start-weight').value)||210,goalWeight:parseFloat(document.getElementById('set-goal-weight').value)||185,testDate:document.getElementById('set-test-date').value||'2026-12-05',sessionsPerWeek:parseInt(document.getElementById('set-sessions-week').value)||3,calTarget:parseInt(document.getElementById('set-cal-target').value)||2000});toast('Goals saved ✓')}
 function saveBaselines(){const b={};EXERCISES.forEach(ex=>{b[ex.key]=parseInt(document.getElementById('baseline-'+ex.key).value)||20});save('baselines',b);toast('Baselines saved ✓')}
 
 // ═══════════════════════════════════════════════════════════

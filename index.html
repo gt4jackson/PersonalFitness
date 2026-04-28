@@ -153,7 +153,7 @@ textarea{resize:vertical;min-height:60px}
   </div>
   <div class="grid-2">
     <div class="card" style="text-align:center"><div class="card-title">Workout today?</div><div id="today-workout-status" style="font-size:24px;font-weight:700">—</div></div>
-    <div class="card" style="text-align:center"><div class="card-title">Clean night?</div><div id="today-night-status" style="font-size:24px;font-weight:700">—</div></div>
+    <div class="card" style="text-align:center"><div class="card-title">Last night clean?</div><div id="today-night-status" style="font-size:24px;font-weight:700">—</div></div>
   </div>
   <div class="card"><div class="card-title">Streaks</div><div class="grid-3" id="streak-grid"></div></div>
   <div class="card">
@@ -189,8 +189,8 @@ textarea{resize:vertical;min-height:60px}
       </div>
     </div>
     <div class="card" style="padding:12px">
-      <div class="toggle-row"><div><div class="toggle-label">Late-night drink?</div><div class="toggle-sub">Keeping track helps break the habit</div></div><label class="toggle"><input type="checkbox" id="log-drink"><span class="toggle-slider"></span></label></div>
-      <div class="toggle-row"><div><div class="toggle-label">Late-night snack?</div><div class="toggle-sub">No snacking after dinner = steady progress</div></div><label class="toggle"><input type="checkbox" id="log-snack"><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div><div class="toggle-label">Late-night drink last night?</div><div class="toggle-sub">Log this morning — did you have a drink?</div></div><label class="toggle"><input type="checkbox" id="log-drink"><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div><div class="toggle-label">Late-night snack last night?</div><div class="toggle-sub">No snacking after dinner = steady progress</div></div><label class="toggle"><input type="checkbox" id="log-snack"><span class="toggle-slider"></span></label></div>
     </div>
     <div class="form-group" style="margin-top:12px"><label class="form-label">Notes</label><textarea id="log-notes" placeholder="How are you feeling?"></textarea></div>
     <button class="btn btn-primary" onclick="saveLog()">Save Daily Log</button>
@@ -256,7 +256,7 @@ textarea{resize:vertical;min-height:60px}
     <div class="card" style="text-align:center"><div class="card-title">Total Lost</div><div style="font-size:32px;font-weight:800;color:var(--green)" id="prog-total-lost">0</div><div class="metric-sub">of 25 lbs goal</div><div class="progress-bar" style="margin-top:8px"><div class="progress-fill green" id="prog-weight-bar" style="width:0%"></div></div></div>
   </div>
   <div id="progress-tab-habits" style="display:none">
-    <div class="card"><div class="card-title">Late-Night Habits — Last 30 Days</div><canvas class="mini-chart" id="habits-chart" style="height:150px"></canvas></div>
+    <div class="card"><div class="card-title">Late-Night Habits (Previous Night) — Last 30 Days</div><canvas class="mini-chart" id="habits-chart" style="height:150px"></canvas></div>
     <div class="grid-2"><div class="card" style="text-align:center"><div class="card-title">Clean Nights</div><div style="font-size:28px;font-weight:800;color:var(--green)" id="clean-nights-count">0</div><div class="metric-sub" id="clean-nights-pct">of last 30 days</div></div><div class="card" style="text-align:center"><div class="card-title">Best Streak</div><div style="font-size:28px;font-weight:800;color:var(--accent)" id="best-clean-streak">0</div><div class="metric-sub">days in a row</div></div></div>
   </div>
   <div id="progress-tab-fitness" style="display:none">
@@ -322,7 +322,9 @@ function getDailyLogs(){return load('dailyLogs',{})}
 function getBBLogs(){return load('bbLogs',{})}
 function getMealLogs(){return load('mealLogs',{})}
 function getBaselines(){return load('baselines',{pushups:30,squats:40,lunges:30,jumpingJacks:50,scissorsKicks:30,plankSec:30})}
-function todayStr(){return new Date().toISOString().split('T')[0]}
+function toEST(d){return new Date(d.toLocaleString('en-US',{timeZone:'America/New_York'}))}
+function dateStrEST(d){const e=toEST(d||new Date());const y=e.getFullYear(),m=String(e.getMonth()+1).padStart(2,'0'),day=String(e.getDate()).padStart(2,'0');return`${y}-${m}-${day}`}
+function todayStr(){return dateStrEST(new Date())}
 function getSyncSettings(){return load('syncSettings',{url:'https://script.google.com/macros/s/AKfycbx_FaFrq76SnLlx63zppuAAPCR0D4fkke0fABuVJR2OLg7GaHCsquT19Tv4vTbDrZwS/exec',ntfyTopic:''})}
 
 // ═══════════════════════════════════════════════════════════
@@ -556,8 +558,8 @@ function getMedals(){
 function getMedalBonusPoints(){return getMedals().filter(m=>m.earned).reduce((s,m)=>s+m.bonus,0)}
 
 function calcStreaks(){
-  const logs=getDailyLogs(),cd=[];const d=new Date();
-  for(let i=0;i<365;i++){cd.push(d.toISOString().split('T')[0]);d.setDate(d.getDate()-1)}
+  const logs=getDailyLogs(),cd=[];const d=toEST(new Date());
+  for(let i=0;i<365;i++){cd.push(dateStrEST(d));d.setDate(d.getDate()-1)}
   let cs=0,ws=0,ls=0,bc=0,bl=0,cc=true,wc=true,lc=true;
   const si=logs[cd[0]]?0:1;
   for(let i=si;i<cd.length;i++){
@@ -573,12 +575,12 @@ function calcStreaks(){
   bc=Math.max(bc,cs);bl=Math.max(bl,ls);
   return{cleanStreak:cs,workoutStreak:ws,logStreak:ls,bestClean:bc,bestLog:bl};
 }
-function nextDay(ds){const d=new Date(ds+'T12:00:00');d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]}
+function nextDay(ds){const d=new Date(ds+'T12:00:00');d.setDate(d.getDate()+1);return dateStrEST(d)}
 
 // ═══════════════════════════════════════════════════════════
 //  WEEKLY PLAN
 // ═══════════════════════════════════════════════════════════
-function getCurrentWeekNumber(){const n=new Date();if(n<PLAN_START)return 0;return Math.floor((n-PLAN_START)/(7*864e5))+1}
+function getCurrentWeekNumber(){const n=toEST(new Date());if(n<PLAN_START)return 0;return Math.floor((n-PLAN_START)/(7*864e5))+1}
 function getWeekNumberForDate(ds){const d=new Date(ds+'T00:00:00');if(d<PLAN_START)return 0;return Math.floor((d-PLAN_START)/(7*864e5))+1}
 function getTotalWeeks(){const s=getSettings();return Math.ceil((new Date(s.testDate+'T00:00:00')-PLAN_START)/(7*864e5))}
 function getWeekPlan(wn){
@@ -589,7 +591,7 @@ function getWeekStartDate(wn){const d=new Date(PLAN_START);d.setDate(d.getDate()
 function getSessionsThisWeek(){
   const wn=getCurrentWeekNumber();if(wn<=0)return{done:0,target:3};
   const ws=getWeekStartDate(wn),bb=getBBLogs(),s=getSettings();let c=0;
-  for(let i=0;i<7;i++){const d=new Date(ws);d.setDate(d.getDate()+i);if(bb[d.toISOString().split('T')[0]])c++}
+  for(let i=0;i<7;i++){const d=new Date(ws);d.setDate(d.getDate()+i);if(bb[dateStrEST(d)])c++}
   return{done:c,target:s.sessionsPerWeek||3};
 }
 function getMultiplierForWeek(wn){return +(1+.5*Math.pow(Math.min(1,wn/getTotalWeeks()),1.5)).toFixed(2)}
@@ -671,7 +673,7 @@ function renderStreaks(){
   if(s.cleanStreak>=7)b.innerHTML=`<span class="badge badge-green">🔥 ${s.cleanStreak}-day clean</span>`;else if(s.cleanStreak>=3)b.innerHTML=`<span class="badge badge-green">${s.cleanStreak}-day clean</span>`;else b.innerHTML='';
 }
 function renderCountdown(){
-  const s=getSettings(),td=new Date(s.testDate+'T00:00:00'),now=new Date(),diff=td-now;
+  const s=getSettings(),td=new Date(s.testDate+'T00:00:00'),now=toEST(new Date()),diff=td-now;
   const days=Math.max(0,Math.ceil(diff/864e5)),weeks=Math.ceil(days/7),spw=s.sessionsPerWeek||3;
   document.getElementById('countdown-weeks').textContent=weeks;document.getElementById('cd-sessions').textContent=weeks*spw;document.getElementById('cd-days').textContent=days;
   const pct=Math.min(100,Math.max(0,((now-PLAN_START)/(td-PLAN_START))*100));
@@ -925,13 +927,13 @@ function renderWeightStats(){const logs=getDailyLogs(),s=getSettings(),lw=getLat
   document.getElementById('prog-start-weight').textContent=s.startWeight;document.getElementById('prog-current-weight').textContent=lw?lw.toFixed(1):'—';
   const lost=lw?s.startWeight-lw:0;document.getElementById('prog-total-lost').textContent=lost>0?lost.toFixed(1):'0';
   document.getElementById('prog-weight-bar').style.width=Math.min(100,Math.max(0,(lost/(s.startWeight-s.goalWeight))*100))+'%'}
-function renderHabitsChart(){const logs=getDailyLogs(),dates=[],d=new Date();for(let i=29;i>=0;i--){const dt=new Date(d);dt.setDate(dt.getDate()-i);dates.push(dt.toISOString().split('T')[0])}
+function renderHabitsChart(){const logs=getDailyLogs(),dates=[],d=toEST(new Date());for(let i=29;i>=0;i--){const dt=new Date(d);dt.setDate(dt.getDate()-i);dates.push(dateStrEST(dt))}
   requestAnimationFrame(()=>{const canvas=document.getElementById('habits-chart');if(!canvas)return;const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();
     canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;ctx.scale(dpr,dpr);const W=rect.width,H=rect.height,pad={top:10,right:10,bottom:20,left:10},bW=(W-pad.left-pad.right)/30-2;
     ctx.clearRect(0,0,W,H);dates.forEach((date,i)=>{const log=logs[date],x=pad.left+i*((W-pad.left-pad.right)/30)+1,h=H-pad.top-pad.bottom;
       if(!log)ctx.fillStyle='#1a1a2e';else{const cl=!log.drink&&!log.snack;ctx.fillStyle=cl?'rgba(78,205,196,.6)':(log.drink&&log.snack)?'rgba(255,107,107,.6)':'rgba(255,167,38,.6)'}ctx.fillRect(x,pad.top,bW,h)});
     ctx.fillStyle='#8888aa';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('30 days ago',pad.left+bW,H-4);ctx.fillText('Today',W-pad.right-bW,H-4)})}
-function renderHabitsStats(){const logs=getDailyLogs(),dates=[],d=new Date();for(let i=29;i>=0;i--){const dt=new Date(d);dt.setDate(dt.getDate()-i);dates.push(dt.toISOString().split('T')[0])}
+function renderHabitsStats(){const logs=getDailyLogs(),dates=[],d=toEST(new Date());for(let i=29;i>=0;i--){const dt=new Date(d);dt.setDate(dt.getDate()-i);dates.push(dateStrEST(dt))}
   let clean=0,total=0,best=0,cur=0;dates.forEach(date=>{const log=logs[date];if(log){total++;if(!log.drink&&!log.snack){clean++;cur++;best=Math.max(best,cur)}else cur=0}});
   document.getElementById('clean-nights-count').textContent=clean;document.getElementById('clean-nights-pct').textContent=total>0?`${Math.round(clean/total*100)}% of ${total} logged days`:'of last 30 days';document.getElementById('best-clean-streak').textContent=best}
 function renderFitnessChart(){const logs=getBBLogs(),dates=Object.keys(logs).sort();if(!dates.length){requestAnimationFrame(()=>drawLineChart('fitness-chart',[],{}));return}

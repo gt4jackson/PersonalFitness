@@ -204,9 +204,6 @@ textarea{resize:vertical;min-height:60px}
       <div class="form-group"><label class="form-label">What did you eat?</label><input type="text" id="meal-food" placeholder="e.g. 2 eggs, toast, coffee"></div>
       <div class="grid-2">
         <div class="form-group"><label class="form-label">Calories (est.)</label><input type="number" id="meal-cals" placeholder="auto" inputmode="numeric"></div>
-        <div class="form-group"><label class="form-label">Meal type</label>
-          <select id="meal-type"><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner">Dinner</option><option value="snack">Snack</option><option value="drink">Drink</option></select>
-        </div>
       </div>
       <div id="cal-estimate-hint" style="font-size:12px;color:var(--orange);margin-bottom:8px;display:none"></div>
       <button class="btn btn-primary" onclick="addMeal()">Add Meal</button>
@@ -746,9 +743,8 @@ function addMeal(){
   if(!food){toast('Enter what you ate');return}
   const manualCal=parseInt(document.getElementById('meal-cals').value);
   const cal=isNaN(manualCal)||manualCal===0?estimateCalories(food):manualCal;
-  const type=document.getElementById('meal-type').value;
   const meals=getMealLogs();if(!meals[date])meals[date]=[];
-  meals[date].push({food,cal:cal||0,type,time:new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),id:Date.now()});
+  meals[date].push({food,cal:cal||0,type:'',time:new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),id:Date.now()});
   save('mealLogs',meals);
   syncToSheet('meals',{date,meals:meals[date]});
   document.getElementById('meal-food').value='';document.getElementById('meal-cals').value='';
@@ -901,6 +897,9 @@ function renderProgress(){renderWeightChart();renderWeightStats();renderHabitsCh
 function switchProgressTab(tab){
   document.querySelectorAll('#page-progress .tab-btn').forEach((b,i)=>b.classList.toggle('active',['weight','habits','fitness'][i]===tab));
   ['weight','habits','fitness'].forEach(t=>document.getElementById('progress-tab-'+t).style.display=t===tab?'block':'none');
+  if(tab==='weight')renderWeightChart();
+  if(tab==='habits')renderHabitsChart();
+  if(tab==='fitness'){renderFitnessChart();renderReadinessRings()}
 }
 function drawLineChart(cid,data,opt={}){
   const canvas=document.getElementById(cid);if(!canvas)return;const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();

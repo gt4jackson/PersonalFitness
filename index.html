@@ -12,10 +12,10 @@
 :root {
   --bg: #0a1628; --surface: #122044; --surface2: #1a2d5a; --border: #253a6e;
   --text: #eef0f5; --text-dim: #8a9bc0;
-  --accent: #d4a843; --accent-glow: rgba(212,168,67,0.25);
-  --green: #7ab648; --green-glow: rgba(122,182,72,0.25);
+  --accent: #dbb44c; --accent-glow: rgba(219,180,76,0.25);
+  --green: #5db835; --green-glow: rgba(93,184,53,0.25);
   --red: #f27068; --red-glow: rgba(242,112,104,0.25);
-  --orange: #d4a843; --orange-glow: rgba(212,168,67,0.25);
+  --orange: #dbb44c; --orange-glow: rgba(219,180,76,0.25);
   --yellow: #e8c44a; --yellow-glow: rgba(232,196,74,0.25);
   --gold: #d4a843; --silver: #c0c0c0; --bronze: #cd7f32;
   --radius: 14px; --radius-sm: 8px;
@@ -53,6 +53,7 @@ textarea{resize:vertical;min-height:60px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 20px;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .2s}
 .btn-primary{background:var(--accent);color:white;width:100%}.btn-primary:active{transform:scale(.98)}
 .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}.btn-danger{background:var(--red-glow);color:var(--red)}.btn-sm{padding:8px 14px;font-size:13px}
+.clr-pick{width:100%;height:44px;padding:2px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);cursor:pointer}
 .chip-group{display:flex;flex-wrap:wrap;gap:8px}
 .chip{padding:8px 14px;border-radius:20px;font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);cursor:pointer;transition:all .2s;user-select:none}
 .chip.selected{background:var(--accent-glow);color:var(--accent);border-color:var(--accent)}
@@ -282,6 +283,39 @@ textarea{resize:vertical;min-height:60px}
       <button class="btn btn-secondary" onclick="fullSync()" style="flex:1">Sync All Data Now</button>
     </div>
     <div id="sync-status" style="font-size:12px;color:var(--text-dim);margin-top:8px;text-align:center"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Theme Colors</div>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">Customize the app colors. Changes preview live.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group" style="margin:0"><label class="form-label">Background</label><input type="color" id="clr-bg" class="clr-pick" oninput="previewColors()"></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Cards</label><input type="color" id="clr-surface" class="clr-pick" oninput="previewColors()"></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Accent / Mustard</label><input type="color" id="clr-accent" class="clr-pick" oninput="previewColors()"></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Green</label><input type="color" id="clr-green" class="clr-pick" oninput="previewColors()"></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Red / Salmon</label><input type="color" id="clr-red" class="clr-pick" oninput="previewColors()"></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Yellow</label><input type="color" id="clr-yellow" class="clr-pick" oninput="previewColors()"></div>
+    </div>
+    <div id="color-preview" style="margin-top:12px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border)">
+      <div id="cp-bg" style="padding:12px">
+        <div id="cp-card" style="border-radius:8px;padding:12px">
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <span id="cp-accent" style="padding:4px 10px;border-radius:4px;font-size:12px;font-weight:600">Accent</span>
+            <span id="cp-green" style="padding:4px 10px;border-radius:4px;font-size:12px;font-weight:600">Green</span>
+            <span id="cp-red" style="padding:4px 10px;border-radius:4px;font-size:12px;font-weight:600">Red</span>
+            <span id="cp-yellow" style="padding:4px 10px;border-radius:4px;font-size:12px;font-weight:600">Yellow</span>
+          </div>
+          <div style="display:flex;gap:4px;height:6px;border-radius:3px;overflow:hidden">
+            <div id="cp-bar1" style="flex:3;border-radius:3px"></div>
+            <div id="cp-bar2" style="flex:2;border-radius:3px"></div>
+            <div id="cp-bar3" style="flex:1;border-radius:3px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-primary" onclick="saveTheme()" style="flex:1">Save Theme</button>
+      <button class="btn btn-secondary" onclick="resetTheme()" style="flex:1">Reset Default</button>
+    </div>
   </div>
   <div class="card"><div class="card-title">Data</div><div style="display:flex;flex-direction:column;gap:8px"><button class="btn btn-secondary" onclick="exportCSV()">Export All Data (CSV)</button><button class="btn btn-danger" onclick="confirmClear()">Clear All Data</button></div></div>
   <div style="text-align:center;margin-top:24px"><p style="font-size:12px;color:var(--text-dim)">FitTrack v4.0 — Jackson Fitness Tracker</p></div>
@@ -907,7 +941,9 @@ function drawLineChart(cid,data,opt={}){
   const W=rect.width,H=rect.height,pad={top:20,right:10,bottom:30,left:40},pW=W-pad.left-pad.right,pH=H-pad.top-pad.bottom;
   ctx.clearRect(0,0,W,H);
   if(!data||!data.length){ctx.fillStyle='#8a9bc0';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('No data yet',W/2,H/2);return}
-  const vals=data.map(d=>d.y).filter(v=>v!=null);if(!vals.length)return;
+  if(W<=0||H<=0)return;
+  const vals=opt.multiLine?data.flatMap(d=>(d.points||[]).map(p=>p.y)).filter(v=>v!=null):data.map(d=>d.y).filter(v=>v!=null);
+  if(!vals.length){ctx.fillStyle='#8a9bc0';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('No data yet',W/2,H/2);return}
   let minY=opt.minY??Math.min(...vals),maxY=opt.maxY??Math.max(...vals);if(minY===maxY){minY-=5;maxY+=5}const rY=maxY-minY;
   if(opt.goalLine!==undefined){const gy=pad.top+pH-((opt.goalLine-minY)/rY)*pH;ctx.strokeStyle='rgba(122,182,72,.4)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(pad.left,gy);ctx.lineTo(W-pad.right,gy);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(122,182,72,.6)';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText('Goal: '+opt.goalLine,pad.left+4,gy-4)}
   ctx.strokeStyle='#253a6e';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.left,pad.top);ctx.lineTo(pad.left,H-pad.bottom);ctx.stroke();
@@ -921,24 +957,27 @@ function drawLineChart(cid,data,opt={}){
 }
 function renderWeightChart(){const logs=getDailyLogs(),s=getSettings(),dates=Object.keys(logs).filter(d=>logs[d].weight).sort();
   const data=dates.map(d=>({y:logs[d].weight,label:new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}));
-  requestAnimationFrame(()=>drawLineChart('weight-chart',data,{color:'#d4a843',goalLine:s.goalWeight,minY:Math.min(s.goalWeight-2,...(data.length?data.map(d=>d.y):[180])),maxY:Math.max(s.startWeight+2,...(data.length?data.map(d=>d.y):[205]))}))}
+  drawLineChart('weight-chart',data,{color:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),goalLine:s.goalWeight,minY:Math.min(s.goalWeight-2,...(data.length?data.map(d=>d.y):[180])),maxY:Math.max(s.startWeight+2,...(data.length?data.map(d=>d.y):[205]))})}
 function renderWeightStats(){const logs=getDailyLogs(),s=getSettings(),lw=getLatestWeight(logs);
   document.getElementById('prog-start-weight').textContent=s.startWeight;document.getElementById('prog-current-weight').textContent=lw?lw.toFixed(1):'—';
   const lost=lw?s.startWeight-lw:0;document.getElementById('prog-total-lost').textContent=lost>0?lost.toFixed(1):'0';
   document.getElementById('prog-weight-bar').style.width=Math.min(100,Math.max(0,(lost/(s.startWeight-s.goalWeight))*100))+'%'}
 function renderHabitsChart(){const logs=getDailyLogs(),dates=[],d=toEST(new Date());for(let i=29;i>=0;i--){const dt=new Date(d);dt.setDate(dt.getDate()-i);dates.push(dateStrEST(dt))}
-  requestAnimationFrame(()=>{const canvas=document.getElementById('habits-chart');if(!canvas)return;const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();
+  {const canvas=document.getElementById('habits-chart');if(!canvas)return;const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();
     canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;ctx.scale(dpr,dpr);const W=rect.width,H=rect.height,pad={top:10,right:10,bottom:20,left:10},bW=(W-pad.left-pad.right)/30-2;
     ctx.clearRect(0,0,W,H);dates.forEach((date,i)=>{const log=logs[date],x=pad.left+i*((W-pad.left-pad.right)/30)+1,h=H-pad.top-pad.bottom;
       if(!log)ctx.fillStyle='#122044';else{const cl=!log.drink&&!log.snack;ctx.fillStyle=cl?'rgba(122,182,72,.6)':(log.drink&&log.snack)?'rgba(242,112,104,.6)':'rgba(212,168,67,.6)'}ctx.fillRect(x,pad.top,bW,h)});
-    ctx.fillStyle='#8a9bc0';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('30 days ago',pad.left+bW,H-4);ctx.fillText('Today',W-pad.right-bW,H-4)})}
+    ctx.fillStyle='#8a9bc0';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('30 days ago',pad.left+bW,H-4);ctx.fillText('Today',W-pad.right-bW,H-4)}}
 function renderHabitsStats(){const logs=getDailyLogs(),dates=[],d=toEST(new Date());for(let i=29;i>=0;i--){const dt=new Date(d);dt.setDate(dt.getDate()-i);dates.push(dateStrEST(dt))}
   let clean=0,total=0,best=0,cur=0;dates.forEach(date=>{const log=logs[date];if(log){total++;if(!log.drink&&!log.snack){clean++;cur++;best=Math.max(best,cur)}else cur=0}});
   document.getElementById('clean-nights-count').textContent=clean;document.getElementById('clean-nights-pct').textContent=total>0?`${Math.round(clean/total*100)}% of ${total} logged days`:'of last 30 days';document.getElementById('best-clean-streak').textContent=best}
-function renderFitnessChart(){const logs=getBBLogs(),dates=Object.keys(logs).sort();if(!dates.length){requestAnimationFrame(()=>drawLineChart('fitness-chart',[],{}));return}
-  const pd=dates.map(d=>({y:getTotalReps(logs[d].pushups)||null})),sd=dates.map(d=>({y:getTotalReps(logs[d].squats)||null})),pld=dates.map(d=>({y:getTotalReps(logs[d].plankSec)||null}));
+function renderFitnessChart(){const logs=getBBLogs(),dates=Object.keys(logs).sort();if(!dates.length){drawLineChart('fitness-chart',[],{});return}
+  const v=k=>{const r=logs;return dates.map(d=>({y:r[d][k]!=null?getTotalReps(r[d][k]):null}))};
+  const pd=v('pushups'),sd=v('squats'),ld=v('lunges'),jd=v('jumpingJacks'),skd=v('scissorsKicks'),pld=v('plankSec');
   const av=[];dates.forEach(d=>EXERCISES.forEach(ex=>{if(logs[d][ex.key])av.push(getTotalReps(logs[d][ex.key]))}));
-  requestAnimationFrame(()=>drawLineChart('fitness-chart',[{points:pd,color:'#d4a843'},{points:sd,color:'#f27068'},{points:pld,color:'#7ab648'}],{multiLine:true,minY:0,maxY:Math.max(200,...av)+10}))}
+  const cs=getComputedStyle(document.documentElement);
+  const gc=v=>cs.getPropertyValue(v).trim();
+  drawLineChart('fitness-chart',[{points:pd,color:gc('--accent')},{points:sd,color:gc('--red')},{points:ld,color:gc('--green')},{points:jd,color:gc('--yellow')},{points:skd,color:'#9b8ec4'},{points:pld,color:'#5ba8c8'}],{multiLine:true,minY:0,maxY:Math.max(200,...av)+10})}
 function renderReadinessRings(){document.getElementById('readiness-rings').innerHTML=EXERCISES.map(ex=>{
   const best=getPersonalBest(ex.key),goal=GOAL_REPS[ex.key],pct=Math.min(100,(best/goal)*100),color=pct>=100?'var(--green)':pct>=70?'var(--accent)':'var(--orange)',r=24,circ=2*Math.PI*r,off=circ-(pct/100)*circ,u=ex.key==='plankSec'?'s':'';
   return`<div class="ring-container"><svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--border)" stroke-width="4"/><circle cx="30" cy="30" r="${r}" fill="none" stroke="${color}" stroke-width="4" stroke-dasharray="${circ}" stroke-dashoffset="${off}" transform="rotate(-90 30 30)" stroke-linecap="round"/><text x="30" y="33" text-anchor="middle" fill="${color}" font-size="11" font-weight="700">${Math.round(pct)}%</text></svg><div class="ring-label">${ex.icon} ${best}${u}/${goal}${u}</div></div>`}).join('')}
@@ -956,9 +995,52 @@ function initSettings(){
   document.getElementById('sync-status').textContent=load('lastSyncMsg','')||'';
   document.getElementById('baseline-inputs').innerHTML=EXERCISES.map(ex=>{const u=ex.key==='plankSec'?'seconds':'reps';
     return`<div class="exercise-row"><span>${ex.icon}</span><span class="exercise-name">${ex.name} <span style="font-size:11px;color:var(--text-dim)">(${u})</span></span><input type="number" class="exercise-input" id="baseline-${ex.key}" value="${getBaselines()[ex.key]}" inputmode="numeric" min="0"></div>`}).join('');
+  initThemeInputs();
 }
 function saveSettings(){save('settings',{startWeight:parseFloat(document.getElementById('set-start-weight').value)||210,goalWeight:parseFloat(document.getElementById('set-goal-weight').value)||185,testDate:document.getElementById('set-test-date').value||'2026-12-05',sessionsPerWeek:parseInt(document.getElementById('set-sessions-week').value)||3,calTarget:parseInt(document.getElementById('set-cal-target').value)||2000});toast('Goals saved ✓')}
 function saveBaselines(){const b={};EXERCISES.forEach(ex=>{b[ex.key]=parseInt(document.getElementById('baseline-'+ex.key).value)||20});save('baselines',b);toast('Baselines saved ✓')}
+
+// ═══════════════════════════════════════════════════════════
+//  THEME COLORS
+// ═══════════════════════════════════════════════════════════
+const DEFAULT_THEME={bg:'#0a1628',surface:'#122044',accent:'#dbb44c',green:'#5db835',red:'#f27068',yellow:'#e8c44a'};
+function getTheme(){return load('theme',{...DEFAULT_THEME})}
+function hexToRgba(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return`rgba(${r},${g},${b},${a})`}
+function lighten(hex,amt){let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);r=Math.min(255,r+amt);g=Math.min(255,g+amt);b=Math.min(255,b+amt);return'#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('')}
+function applyTheme(t){
+  const root=document.documentElement.style;
+  root.setProperty('--bg',t.bg);root.setProperty('--surface',t.surface);
+  root.setProperty('--surface2',lighten(t.surface,16));root.setProperty('--border',lighten(t.surface,30));
+  root.setProperty('--accent',t.accent);root.setProperty('--accent-glow',hexToRgba(t.accent,0.25));
+  root.setProperty('--green',t.green);root.setProperty('--green-glow',hexToRgba(t.green,0.25));
+  root.setProperty('--red',t.red);root.setProperty('--red-glow',hexToRgba(t.red,0.25));
+  root.setProperty('--yellow',t.yellow);root.setProperty('--yellow-glow',hexToRgba(t.yellow,0.25));
+  root.setProperty('--orange',t.accent);root.setProperty('--orange-glow',hexToRgba(t.accent,0.25));
+}
+function initThemeInputs(){
+  const t=getTheme();
+  document.getElementById('clr-bg').value=t.bg;document.getElementById('clr-surface').value=t.surface;
+  document.getElementById('clr-accent').value=t.accent;document.getElementById('clr-green').value=t.green;
+  document.getElementById('clr-red').value=t.red;document.getElementById('clr-yellow').value=t.yellow;
+  updateColorPreview(t);
+}
+function readThemeInputs(){
+  return{bg:document.getElementById('clr-bg').value,surface:document.getElementById('clr-surface').value,
+    accent:document.getElementById('clr-accent').value,green:document.getElementById('clr-green').value,
+    red:document.getElementById('clr-red').value,yellow:document.getElementById('clr-yellow').value};
+}
+function previewColors(){const t=readThemeInputs();applyTheme(t);updateColorPreview(t)}
+function updateColorPreview(t){
+  document.getElementById('cp-bg').style.background=t.bg;
+  document.getElementById('cp-card').style.background=t.surface;document.getElementById('cp-card').style.border='1px solid '+lighten(t.surface,30);
+  document.getElementById('cp-accent').style.background=hexToRgba(t.accent,0.3);document.getElementById('cp-accent').style.color=t.accent;
+  document.getElementById('cp-green').style.background=hexToRgba(t.green,0.3);document.getElementById('cp-green').style.color=t.green;
+  document.getElementById('cp-red').style.background=hexToRgba(t.red,0.3);document.getElementById('cp-red').style.color=t.red;
+  document.getElementById('cp-yellow').style.background=hexToRgba(t.yellow,0.3);document.getElementById('cp-yellow').style.color=t.yellow;
+  document.getElementById('cp-bar1').style.background=t.accent;document.getElementById('cp-bar2').style.background=t.green;document.getElementById('cp-bar3').style.background=t.red;
+}
+function saveTheme(){save('theme',readThemeInputs());toast('Theme saved ✓')}
+function resetTheme(){save('theme',{...DEFAULT_THEME});applyTheme(DEFAULT_THEME);initThemeInputs();toast('Theme reset to default')}
 
 // ═══════════════════════════════════════════════════════════
 //  EXPORT
@@ -977,7 +1059,7 @@ function exportCSV(){
 // ═══════════════════════════════════════════════════════════
 //  INIT + PULL-TO-REFRESH
 // ═══════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded',()=>{showPage('today')});
+document.addEventListener('DOMContentLoaded',()=>{applyTheme(getTheme());showPage('today')});
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
 
 (function(){const app=document.getElementById('app'),ind=document.getElementById('ptr-indicator'),th=80;let sY=0,pd=0,pulling=false;

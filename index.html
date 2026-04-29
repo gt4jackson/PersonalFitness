@@ -5,19 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#1a1a2e">
+<meta name="theme-color" content="#122044">
 <link rel="manifest" href="manifest.json">
 <title>FitTrack — Jackson Fitness</title>
 <style>
 :root {
-  --bg: #0f0f1a; --surface: #1a1a2e; --surface2: #232340; --border: #2d2d50;
-  --text: #e8e8f0; --text-dim: #8888aa;
-  --accent: #6c63ff; --accent-glow: rgba(108,99,255,0.3);
-  --green: #4ecdc4; --green-glow: rgba(78,205,196,0.3);
-  --red: #ff6b6b; --red-glow: rgba(255,107,107,0.3);
-  --orange: #ffa726; --orange-glow: rgba(255,167,38,0.3);
-  --yellow: #ffd93d; --yellow-glow: rgba(255,217,61,0.25);
-  --gold: #ffd700; --silver: #c0c0c0; --bronze: #cd7f32;
+  --bg: #0a1628; --surface: #122044; --surface2: #1a2d5a; --border: #253a6e;
+  --text: #eef0f5; --text-dim: #8a9bc0;
+  --accent: #d4a843; --accent-glow: rgba(212,168,67,0.25);
+  --green: #7ab648; --green-glow: rgba(122,182,72,0.25);
+  --red: #f27068; --red-glow: rgba(242,112,104,0.25);
+  --orange: #d4a843; --orange-glow: rgba(212,168,67,0.25);
+  --yellow: #e8c44a; --yellow-glow: rgba(232,196,74,0.25);
+  --gold: #d4a843; --silver: #c0c0c0; --bronze: #cd7f32;
   --radius: 14px; --radius-sm: 8px;
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
@@ -221,7 +221,6 @@ textarea{resize:vertical;min-height:60px}
   <h2>Blackbelt Prep</h2>
   <div class="tab-bar">
     <button class="tab-btn active" onclick="switchBBTab('train')">Train</button>
-    <button class="tab-btn" onclick="switchBBTab('plan')">Plan</button>
     <button class="tab-btn" onclick="switchBBTab('medals')">Medals</button>
     <button class="tab-btn" onclick="switchBBTab('history')">History</button>
   </div>
@@ -234,7 +233,6 @@ textarea{resize:vertical;min-height:60px}
     </div>
     <div class="card"><div class="card-title">Personal Bests</div><div id="personal-bests"></div></div>
   </div>
-  <div id="bb-tab-plan" style="display:none"><div class="card"><div class="card-title">Progressive Training Plan</div><p style="font-size:13px;color:var(--text-dim);margin-bottom:8px">3 sessions/week. Each session: all exercises at per-session target. Points increase closer to test day!</p><div style="overflow-x:auto"><table class="week-plan" id="week-plan-table"></table></div></div></div>
   <div id="bb-tab-medals" style="display:none"><div class="card"><div class="card-title">Medals & Achievements</div><div class="medal-grid" id="medal-grid"></div></div></div>
   <div id="bb-tab-history" style="display:none"><div class="card"><div class="card-title">Exercise History</div><div id="bb-history-list"></div></div></div>
 </div>
@@ -866,7 +864,7 @@ function renderPersonalBests(){
 }
 
 function switchBBTab(tab){
-  const tabs=['train','plan','medals','history'];
+  const tabs=['train','medals','history'];
   document.querySelectorAll('#page-blackbelt .tab-btn').forEach((b,i)=>b.classList.toggle('active',tabs[i]===tab));
   tabs.forEach(t=>{const el=document.getElementById('bb-tab-'+t);if(el)el.style.display=t===tab?'block':'none'});
 }
@@ -897,31 +895,33 @@ function renderProgress(){renderWeightChart();renderWeightStats();renderHabitsCh
 function switchProgressTab(tab){
   document.querySelectorAll('#page-progress .tab-btn').forEach((b,i)=>b.classList.toggle('active',['weight','habits','fitness'][i]===tab));
   ['weight','habits','fitness'].forEach(t=>document.getElementById('progress-tab-'+t).style.display=t===tab?'block':'none');
-  if(tab==='weight')renderWeightChart();
-  if(tab==='habits')renderHabitsChart();
-  if(tab==='fitness'){renderFitnessChart();renderReadinessRings()}
+  setTimeout(()=>{
+    if(tab==='weight')renderWeightChart();
+    if(tab==='habits')renderHabitsChart();
+    if(tab==='fitness'){renderFitnessChart();renderReadinessRings()}
+  },50);
 }
 function drawLineChart(cid,data,opt={}){
   const canvas=document.getElementById(cid);if(!canvas)return;const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();
   canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;ctx.scale(dpr,dpr);
   const W=rect.width,H=rect.height,pad={top:20,right:10,bottom:30,left:40},pW=W-pad.left-pad.right,pH=H-pad.top-pad.bottom;
   ctx.clearRect(0,0,W,H);
-  if(!data||!data.length){ctx.fillStyle='#8888aa';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('No data yet',W/2,H/2);return}
+  if(!data||!data.length){ctx.fillStyle='#8a9bc0';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('No data yet',W/2,H/2);return}
   const vals=data.map(d=>d.y).filter(v=>v!=null);if(!vals.length)return;
   let minY=opt.minY??Math.min(...vals),maxY=opt.maxY??Math.max(...vals);if(minY===maxY){minY-=5;maxY+=5}const rY=maxY-minY;
-  if(opt.goalLine!==undefined){const gy=pad.top+pH-((opt.goalLine-minY)/rY)*pH;ctx.strokeStyle='rgba(78,205,196,.4)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(pad.left,gy);ctx.lineTo(W-pad.right,gy);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(78,205,196,.6)';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText('Goal: '+opt.goalLine,pad.left+4,gy-4)}
-  ctx.strokeStyle='#2d2d50';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.left,pad.top);ctx.lineTo(pad.left,H-pad.bottom);ctx.stroke();
-  ctx.fillStyle='#8888aa';ctx.font='10px sans-serif';ctx.textAlign='right';
-  for(let i=0;i<=4;i++){const val=minY+(rY*i/4),y=pad.top+pH-(i/4)*pH;ctx.fillText(Math.round(val),pad.left-4,y+3);ctx.strokeStyle='#1a1a2e';ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke()}
-  const ds=opt.multiLine?data:[{points:data,color:opt.color||'#6c63ff'}];
+  if(opt.goalLine!==undefined){const gy=pad.top+pH-((opt.goalLine-minY)/rY)*pH;ctx.strokeStyle='rgba(122,182,72,.4)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(pad.left,gy);ctx.lineTo(W-pad.right,gy);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(122,182,72,.6)';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText('Goal: '+opt.goalLine,pad.left+4,gy-4)}
+  ctx.strokeStyle='#253a6e';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.left,pad.top);ctx.lineTo(pad.left,H-pad.bottom);ctx.stroke();
+  ctx.fillStyle='#8a9bc0';ctx.font='10px sans-serif';ctx.textAlign='right';
+  for(let i=0;i<=4;i++){const val=minY+(rY*i/4),y=pad.top+pH-(i/4)*pH;ctx.fillText(Math.round(val),pad.left-4,y+3);ctx.strokeStyle='#122044';ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke()}
+  const ds=opt.multiLine?data:[{points:data,color:opt.color||'#d4a843'}];
   ds.forEach(d=>{const pts=d.points.filter(p=>p.y!=null);if(pts.length<2)return;ctx.strokeStyle=d.color;ctx.lineWidth=2;ctx.beginPath();
     pts.forEach((p,i)=>{const x=pad.left+(i/(pts.length-1))*pW,y=pad.top+pH-((p.y-minY)/rY)*pH;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});ctx.stroke();
     const l=pts[pts.length-1],lx=pad.left+pW,ly=pad.top+pH-((l.y-minY)/rY)*pH;ctx.fillStyle=d.color;ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fill()});
-  if(data.length>0&&!opt.multiLine){ctx.fillStyle='#8888aa';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(data[0].label||'',pad.left,H-8);ctx.fillText(data[data.length-1].label||'',W-pad.right,H-8)}
+  if(data.length>0&&!opt.multiLine){ctx.fillStyle='#8a9bc0';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(data[0].label||'',pad.left,H-8);ctx.fillText(data[data.length-1].label||'',W-pad.right,H-8)}
 }
 function renderWeightChart(){const logs=getDailyLogs(),s=getSettings(),dates=Object.keys(logs).filter(d=>logs[d].weight).sort();
   const data=dates.map(d=>({y:logs[d].weight,label:new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}));
-  requestAnimationFrame(()=>drawLineChart('weight-chart',data,{color:'#6c63ff',goalLine:s.goalWeight,minY:Math.min(s.goalWeight-2,...(data.length?data.map(d=>d.y):[180])),maxY:Math.max(s.startWeight+2,...(data.length?data.map(d=>d.y):[205]))}))}
+  requestAnimationFrame(()=>drawLineChart('weight-chart',data,{color:'#d4a843',goalLine:s.goalWeight,minY:Math.min(s.goalWeight-2,...(data.length?data.map(d=>d.y):[180])),maxY:Math.max(s.startWeight+2,...(data.length?data.map(d=>d.y):[205]))}))}
 function renderWeightStats(){const logs=getDailyLogs(),s=getSettings(),lw=getLatestWeight(logs);
   document.getElementById('prog-start-weight').textContent=s.startWeight;document.getElementById('prog-current-weight').textContent=lw?lw.toFixed(1):'—';
   const lost=lw?s.startWeight-lw:0;document.getElementById('prog-total-lost').textContent=lost>0?lost.toFixed(1):'0';
@@ -930,15 +930,15 @@ function renderHabitsChart(){const logs=getDailyLogs(),dates=[],d=toEST(new Date
   requestAnimationFrame(()=>{const canvas=document.getElementById('habits-chart');if(!canvas)return;const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();
     canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;ctx.scale(dpr,dpr);const W=rect.width,H=rect.height,pad={top:10,right:10,bottom:20,left:10},bW=(W-pad.left-pad.right)/30-2;
     ctx.clearRect(0,0,W,H);dates.forEach((date,i)=>{const log=logs[date],x=pad.left+i*((W-pad.left-pad.right)/30)+1,h=H-pad.top-pad.bottom;
-      if(!log)ctx.fillStyle='#1a1a2e';else{const cl=!log.drink&&!log.snack;ctx.fillStyle=cl?'rgba(78,205,196,.6)':(log.drink&&log.snack)?'rgba(255,107,107,.6)':'rgba(255,167,38,.6)'}ctx.fillRect(x,pad.top,bW,h)});
-    ctx.fillStyle='#8888aa';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('30 days ago',pad.left+bW,H-4);ctx.fillText('Today',W-pad.right-bW,H-4)})}
+      if(!log)ctx.fillStyle='#122044';else{const cl=!log.drink&&!log.snack;ctx.fillStyle=cl?'rgba(122,182,72,.6)':(log.drink&&log.snack)?'rgba(242,112,104,.6)':'rgba(212,168,67,.6)'}ctx.fillRect(x,pad.top,bW,h)});
+    ctx.fillStyle='#8a9bc0';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('30 days ago',pad.left+bW,H-4);ctx.fillText('Today',W-pad.right-bW,H-4)})}
 function renderHabitsStats(){const logs=getDailyLogs(),dates=[],d=toEST(new Date());for(let i=29;i>=0;i--){const dt=new Date(d);dt.setDate(dt.getDate()-i);dates.push(dateStrEST(dt))}
   let clean=0,total=0,best=0,cur=0;dates.forEach(date=>{const log=logs[date];if(log){total++;if(!log.drink&&!log.snack){clean++;cur++;best=Math.max(best,cur)}else cur=0}});
   document.getElementById('clean-nights-count').textContent=clean;document.getElementById('clean-nights-pct').textContent=total>0?`${Math.round(clean/total*100)}% of ${total} logged days`:'of last 30 days';document.getElementById('best-clean-streak').textContent=best}
 function renderFitnessChart(){const logs=getBBLogs(),dates=Object.keys(logs).sort();if(!dates.length){requestAnimationFrame(()=>drawLineChart('fitness-chart',[],{}));return}
   const pd=dates.map(d=>({y:getTotalReps(logs[d].pushups)||null})),sd=dates.map(d=>({y:getTotalReps(logs[d].squats)||null})),pld=dates.map(d=>({y:getTotalReps(logs[d].plankSec)||null}));
   const av=[];dates.forEach(d=>EXERCISES.forEach(ex=>{if(logs[d][ex.key])av.push(getTotalReps(logs[d][ex.key]))}));
-  requestAnimationFrame(()=>drawLineChart('fitness-chart',[{points:pd,color:'#6c63ff'},{points:sd,color:'#4ecdc4'},{points:pld,color:'#ffa726'}],{multiLine:true,minY:0,maxY:Math.max(200,...av)+10}))}
+  requestAnimationFrame(()=>drawLineChart('fitness-chart',[{points:pd,color:'#d4a843'},{points:sd,color:'#f27068'},{points:pld,color:'#7ab648'}],{multiLine:true,minY:0,maxY:Math.max(200,...av)+10}))}
 function renderReadinessRings(){document.getElementById('readiness-rings').innerHTML=EXERCISES.map(ex=>{
   const best=getPersonalBest(ex.key),goal=GOAL_REPS[ex.key],pct=Math.min(100,(best/goal)*100),color=pct>=100?'var(--green)':pct>=70?'var(--accent)':'var(--orange)',r=24,circ=2*Math.PI*r,off=circ-(pct/100)*circ,u=ex.key==='plankSec'?'s':'';
   return`<div class="ring-container"><svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--border)" stroke-width="4"/><circle cx="30" cy="30" r="${r}" fill="none" stroke="${color}" stroke-width="4" stroke-dasharray="${circ}" stroke-dashoffset="${off}" transform="rotate(-90 30 30)" stroke-linecap="round"/><text x="30" y="33" text-anchor="middle" fill="${color}" font-size="11" font-weight="700">${Math.round(pct)}%</text></svg><div class="ring-label">${ex.icon} ${best}${u}/${goal}${u}</div></div>`}).join('')}

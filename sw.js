@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fittrack-v15';
+const CACHE_NAME = 'fittrack-v17';
 const ASSETS = ['./index.html', './manifest.json'];
 
 self.addEventListener('install', e => {

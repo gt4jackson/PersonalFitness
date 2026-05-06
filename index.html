@@ -256,7 +256,7 @@ textarea{resize:vertical;min-height:60px}
     <div class="grid-2"><div class="card" style="text-align:center"><div class="card-title">Clean Nights</div><div style="font-size:28px;font-weight:800;color:var(--green)" id="clean-nights-count">0</div><div class="metric-sub" id="clean-nights-pct">of last 30 days</div></div><div class="card" style="text-align:center"><div class="card-title">Best Streak</div><div style="font-size:28px;font-weight:800;color:var(--accent)" id="best-clean-streak">0</div><div class="metric-sub">days in a row</div></div></div>
   </div>
   <div id="progress-tab-fitness" style="display:none">
-    <div class="card"><div class="card-title">Exercise Progression</div><canvas class="mini-chart" id="fitness-chart" style="height:200px"></canvas></div>
+    <div class="card"><div class="card-title">Exercise Progression</div><canvas class="mini-chart" id="fitness-chart" style="height:260px"></canvas></div>
     <div class="card"><div class="card-title">Readiness for Test Day</div><div id="readiness-rings" style="display:flex;flex-wrap:wrap;justify-content:center;gap:16px;padding:8px 0"></div></div>
   </div>
 </div>
@@ -905,7 +905,8 @@ function switchBBTab(tab){
   tabs.forEach(t=>{const el=document.getElementById('bb-tab-'+t);if(el)el.style.display=t===tab?'block':'none'});
 }
 function renderWeekPlan(){
-  const table=document.getElementById('week-plan-table'),tw=getTotalWeeks(),cw=getCurrentWeekNumber(),s=getSettings(),spw=s.sessionsPerWeek||3;
+  const table=document.getElementById('week-plan-table');if(!table)return;
+  const tw=getTotalWeeks(),cw=getCurrentWeekNumber(),s=getSettings(),spw=s.sessionsPerWeek||3;
   let html=`<thead><tr><th>Wk</th><th>Sess</th>`;EXERCISES.forEach(ex=>{html+=`<th>${ex.icon}</th>`});html+='<th>Pts</th></tr></thead><tbody>';
   for(let w=1;w<=tw;w+=2){const plan=getWeekPlan(w),ic=w===cw||w+1===cw,m=getMultiplierForWeek(w);
     html+=`<tr class="${ic?'current-week':''}"><td style="white-space:nowrap">Wk ${w}${ic?' ←':''}</td><td>${spw}x</td>`;
@@ -940,7 +941,7 @@ function switchProgressTab(tab){
 function drawLineChart(cid,data,opt={}){
   const canvas=document.getElementById(cid);if(!canvas)return;const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();
   canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;ctx.scale(dpr,dpr);
-  const W=rect.width,H=rect.height,pad={top:20,right:10,bottom:30,left:40},pW=W-pad.left-pad.right,pH=H-pad.top-pad.bottom;
+  const W=rect.width,H=rect.height,pad={top:20,right:10,bottom:opt.multiLine?60:30,left:40},pW=W-pad.left-pad.right,pH=H-pad.top-pad.bottom;
   ctx.clearRect(0,0,W,H);
   if(!data||!data.length){ctx.fillStyle='#8a9bc0';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('No data yet',W/2,H/2);return}
   if(W<=0||H<=0)return;
@@ -956,6 +957,21 @@ function drawLineChart(cid,data,opt={}){
     pts.forEach((p,i)=>{const x=pad.left+(i/(pts.length-1))*pW,y=pad.top+pH-((p.y-minY)/rY)*pH;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});ctx.stroke();
     const l=pts[pts.length-1],lx=pad.left+pW,ly=pad.top+pH-((l.y-minY)/rY)*pH;ctx.fillStyle=d.color;ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fill()});
   if(data.length>0&&!opt.multiLine){ctx.fillStyle='#8a9bc0';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(data[0].label||'',pad.left,H-8);ctx.fillText(data[data.length-1].label||'',W-pad.right,H-8)}
+  if(opt.multiLine){
+    // X-axis date labels
+    if(opt.xLabels&&opt.xLabels.length>1){ctx.fillStyle='#8a9bc0';ctx.font='9px sans-serif';ctx.textAlign='center';
+      const xl=opt.xLabels,step=Math.max(1,Math.floor(xl.length/4));
+      for(let i=0;i<xl.length;i+=step){const x=pad.left+(i/(xl.length-1))*pW;ctx.fillText(xl[i],x,pad.top+pH+14)}
+      const lasti=xl.length-1,lastx=pad.left+pW;ctx.fillText(xl[lasti],lastx,pad.top+pH+14);
+    }
+    // Legend - 2 rows of 3
+    ctx.font='9px sans-serif';ctx.textAlign='left';
+    const labeled=ds.filter(d=>d.label),perRow=3,rowH=12;
+    labeled.forEach((d,i)=>{
+      const row=Math.floor(i/perRow),col=i%perRow;
+      const colW=pW/perRow,lx=pad.left+col*colW,ly=H-((1-row)*rowH)-4;
+      ctx.fillStyle=d.color;ctx.fillRect(lx,ly-3,10,3);ctx.fillText(d.label,lx+14,ly)});
+  }
 }
 function renderWeightChart(){const logs=getDailyLogs(),s=getSettings(),dates=Object.keys(logs).filter(d=>logs[d].weight).sort();
   const data=dates.map(d=>({y:logs[d].weight,label:new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}));
@@ -979,7 +995,8 @@ function renderFitnessChart(){const logs=getBBLogs(),dates=Object.keys(logs).sor
   const av=[];dates.forEach(d=>EXERCISES.forEach(ex=>{if(logs[d][ex.key])av.push(getTotalReps(logs[d][ex.key]))}));
   const cs=getComputedStyle(document.documentElement);
   const gc=v=>cs.getPropertyValue(v).trim();
-  drawLineChart('fitness-chart',[{points:pd,color:gc('--accent')},{points:sd,color:gc('--red')},{points:ld,color:gc('--green')},{points:jd,color:gc('--yellow')},{points:skd,color:'#9b8ec4'},{points:pld,color:'#5ba8c8'}],{multiLine:true,minY:0,maxY:Math.max(200,...av)+10})}
+  const xLabels=dates.map(d=>new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+  drawLineChart('fitness-chart',[{points:pd,color:gc('--accent'),label:'Push-ups'},{points:sd,color:gc('--red'),label:'Squats'},{points:ld,color:gc('--green'),label:'Lunges'},{points:jd,color:gc('--yellow'),label:'Jacks'},{points:skd,color:'#9b8ec4',label:'Scissors'},{points:pld,color:'#5ba8c8',label:'Plank'}],{multiLine:true,minY:0,maxY:Math.max(200,...av)+10,xLabels})}
 function renderReadinessRings(){document.getElementById('readiness-rings').innerHTML=EXERCISES.map(ex=>{
   const best=getPersonalBest(ex.key),goal=GOAL_REPS[ex.key],pct=Math.min(100,(best/goal)*100),color=pct>=100?'var(--green)':pct>=70?'var(--accent)':'var(--orange)',r=24,circ=2*Math.PI*r,off=circ-(pct/100)*circ,u=ex.key==='plankSec'?'s':'';
   return`<div class="ring-container"><svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--border)" stroke-width="4"/><circle cx="30" cy="30" r="${r}" fill="none" stroke="${color}" stroke-width="4" stroke-dasharray="${circ}" stroke-dashoffset="${off}" transform="rotate(-90 30 30)" stroke-linecap="round"/><text x="30" y="33" text-anchor="middle" fill="${color}" font-size="11" font-weight="700">${Math.round(pct)}%</text></svg><div class="ring-label">${ex.icon} ${best}${u}/${goal}${u}</div></div>`}).join('')}

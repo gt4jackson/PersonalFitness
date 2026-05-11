@@ -102,7 +102,7 @@ textarea{resize:vertical;min-height:60px}
 .cal-summary{display:flex;justify-content:space-around;text-align:center;padding:8px 0}
 .cal-summary-num{font-size:24px;font-weight:800}.cal-summary-label{font-size:11px;color:var(--text-dim)}
 /* Set tracker */
-.set-log{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}.set-log:empty{margin:0}
+.set-log{display:flex;flex-wrap:wrap;gap:4px}
 .set-chip{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:26px;padding:0 6px;border-radius:13px;font-size:12px;font-weight:700;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent)}
 .set-total{font-size:13px;font-weight:700;color:var(--green);margin-left:4px}
 .add-set-row{display:flex;align-items:center;gap:6px;margin-top:6px}
@@ -824,12 +824,11 @@ function renderExerciseInputs(){
           <span class="exercise-name">${ex.name}</span>
         </div>
         <div style="display:flex;align-items:center;gap:4px">
-          <input type="number" class="add-set-input" id="set-input-${ex.key}" placeholder="${ph}" inputmode="numeric" min="0" style="width:50px">
+          <input type="number" class="add-set-input" id="set-input-${ex.key}" placeholder="${ph}" inputmode="numeric" min="0" style="width:60px">
           <button class="add-set-btn" onclick="addSet('${ex.key}')" style="padding:6px 10px">+</button>
         </div>
       </div>
-      <div class="set-log" id="sets-${ex.key}"></div>
-      <span class="set-total" id="total-${ex.key}"></span>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:4px" id="sets-row-${ex.key}"><div class="set-log" id="sets-${ex.key}" style="display:contents"></div><span class="set-total" id="total-${ex.key}"></span></div>
     </div>`;
   }).join('');
 }
@@ -849,7 +848,9 @@ function renderSets(key){
   const sets=currentSets[key]||[];
   const total=sets.reduce((s,v)=>s+v,0);
   document.getElementById('sets-'+key).innerHTML=sets.map((v,i)=>`<span class="set-chip" onclick="removeSet('${key}',${i})">${v}</span>`).join('');
-  document.getElementById('total-'+key).textContent=total>0?`= ${total} total`:'';
+  document.getElementById('total-'+key).textContent=total>0?`= ${total}`:'';
+  const row=document.getElementById('sets-row-'+key);
+  if(row)row.style.display=sets.length>0?'flex':'none';
 }
 
 function loadBBLogForDate(){

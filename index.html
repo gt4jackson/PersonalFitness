@@ -102,7 +102,7 @@ textarea{resize:vertical;min-height:60px}
 .cal-summary{display:flex;justify-content:space-around;text-align:center;padding:8px 0}
 .cal-summary-num{font-size:24px;font-weight:800}.cal-summary-label{font-size:11px;color:var(--text-dim)}
 /* Set tracker */
-.set-log{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.set-log{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}.set-log:empty{margin:0}
 .set-chip{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:26px;padding:0 6px;border-radius:13px;font-size:12px;font-weight:700;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent)}
 .set-total{font-size:13px;font-weight:700;color:var(--green);margin-left:4px}
 .add-set-row{display:flex;align-items:center;gap:6px;margin-top:6px}
@@ -814,21 +814,22 @@ function renderBlackbelt(){
   renderExerciseInputs();loadBBLogForDate();renderPersonalBests();renderWeekPlan();renderMedals();renderBBHistory();
 }
 function renderExerciseInputs(){
-  const c=document.getElementById('exercise-inputs'),wk=getCurrentWeekNumber(),plan=getWeekPlan(wk),s=getSettings(),spw=s.sessionsPerWeek||3;
+  const c=document.getElementById('exercise-inputs');
   c.innerHTML=EXERCISES.map(ex=>{
-    const wt=plan?plan[ex.key]:GOAL_REPS[ex.key],st=plan?Math.ceil(plan[ex.key]/spw):'—';
-    const unit=ex.key==='plankSec'?'sec':'reps';
-    return`<div style="padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span>${ex.icon}</span>
-        <span class="exercise-name">${ex.name}<div style="font-size:11px;color:var(--text-dim)">Session: ${st} · Week: ${wt} ${unit}</div></span>
+    const ph=ex.key==='plankSec'?'sec':'reps';
+    return`<div style="padding:6px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:14px">${ex.icon}</span>
+          <span class="exercise-name">${ex.name}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <input type="number" class="add-set-input" id="set-input-${ex.key}" placeholder="${ph}" inputmode="numeric" min="0" style="width:50px">
+          <button class="add-set-btn" onclick="addSet('${ex.key}')" style="padding:6px 10px">+</button>
+        </div>
       </div>
       <div class="set-log" id="sets-${ex.key}"></div>
-      <div class="add-set-row">
-        <input type="number" class="add-set-input" id="set-input-${ex.key}" placeholder="${ex.key==='plankSec'?'sec':'reps'}" inputmode="numeric" min="0">
-        <button class="add-set-btn" onclick="addSet('${ex.key}')">+ Set</button>
-        <span class="set-total" id="total-${ex.key}"></span>
-      </div>
+      <span class="set-total" id="total-${ex.key}"></span>
     </div>`;
   }).join('');
 }

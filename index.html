@@ -24,13 +24,24 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden}
 body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;flex-direction:column}
-#app{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px 16px 100px;-webkit-overflow-scrolling:touch}
+#app{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 16px 40px;-webkit-overflow-scrolling:touch}
 .page{display:none}.page.active{display:block;animation:pageFadeIn .15s ease}
 @keyframes pageFadeIn{from{opacity:0}to{opacity:1}}
-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);display:flex;padding:6px 0 max(6px,env(safe-area-inset-bottom));z-index:100}
-nav button{flex:1;background:none;border:none;color:var(--text-dim);font-size:10px;padding:8px 0 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:color .2s;position:relative}
-nav button.active{color:var(--accent)}nav button.active::before{content:'';position:absolute;top:0;left:25%;right:25%;height:2.5px;background:var(--accent);border-radius:0 0 2px 2px}
-nav button svg{width:24px;height:24px}
+nav{display:none}
+.top-bar{position:sticky;top:0;z-index:100;background:var(--bg);padding:8px 16px 0}
+.status-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.status-left{display:flex;align-items:center;gap:10px}
+.status-streak{font-size:13px;font-weight:700;color:var(--green)}
+.status-level{font-size:13px;font-weight:700;color:var(--accent)}
+.status-pts{font-size:12px;color:var(--text-dim)}
+.menu-btn{background:none;border:none;color:var(--text-dim);font-size:22px;cursor:pointer;padding:4px 8px}
+.main-tabs{display:flex;gap:4px;background:var(--surface);border-radius:var(--radius);padding:3px;margin-bottom:4px}
+.main-tab{flex:1;padding:10px 8px;border:none;border-radius:10px;background:transparent;color:var(--text-dim);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .2s ease}.main-tab:active{transform:scale(.96)}.main-tab.active{background:var(--accent);color:white;box-shadow:0 2px 8px var(--accent-glow)}
+.menu-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200}.menu-overlay.show{display:flex;justify-content:flex-end}
+.menu-panel{width:260px;background:var(--surface);padding:20px;overflow-y:auto;animation:menuSlide .2s ease}
+@keyframes menuSlide{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.menu-item{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);color:var(--text);font-size:15px;font-weight:500;cursor:pointer;background:none;border-left:none;border-right:none;border-top:none;width:100%;font-family:var(--font)}
+.menu-item svg{width:20px;height:20px;color:var(--text-dim)}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px;overflow:hidden}
 .card-title{font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--text-dim);margin-bottom:12px;padding-left:10px;border-left:3px solid var(--accent)}
 h1{font-size:22px;font-weight:700;margin-bottom:4px}h2{font-size:18px;font-weight:600;margin-bottom:16px}
@@ -124,21 +135,101 @@ textarea{resize:vertical;min-height:60px}
   <div id="popup-multiplier" style="margin-top:8px;"></div>
 </div>
 
+<div class="top-bar">
+  <div class="status-row">
+    <div class="status-left">
+      <span class="status-streak" id="status-streak">0-day streak</span>
+      <span style="color:var(--border)">|</span>
+      <span class="status-level">Lv <span id="status-level">1</span></span>
+      <span class="status-pts" id="status-pts">0 pts</span>
+    </div>
+    <button class="menu-btn" onclick="toggleMenu()" aria-label="Menu">☰</button>
+  </div>
+  <div class="main-tabs">
+    <button class="main-tab active" onclick="showPage('prep')" id="nav-prep">Prep</button>
+    <button class="main-tab" onclick="showPage('meals')" id="nav-meals">Meals</button>
+    <button class="main-tab" onclick="showPage('weight')" id="nav-weight">Weight</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="menu-overlay" onclick="toggleMenu()">
+  <div class="menu-panel" onclick="event.stopPropagation()">
+    <div style="margin-bottom:16px"><h2 style="font-size:18px;font-weight:700" id="greeting">Good morning</h2><p style="color:var(--text-dim);font-size:13px" id="today-date"></p></div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:12px;color:var(--text-dim)">Level <span id="level-num">1</span> — <span id="level-title">Beginner</span></div>
+        <div style="font-size:12px;font-weight:700;color:var(--yellow)" id="total-points">0 pts</div>
+      </div>
+      <div class="xp-bar-outer"><div class="xp-bar-fill" id="xp-bar" style="width:0%"></div><div class="xp-bar-text" id="xp-text">0 / 100 XP</div></div>
+    </div>
+    <button class="menu-item" onclick="showPage('overview');toggleMenu()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Overview</button>
+    <button class="menu-item" onclick="showPage('progress');toggleMenu()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Progress</button>
+    <button class="menu-item" onclick="showPage('medals');toggleMenu()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>Medals</button>
+    <button class="menu-item" onclick="showPage('history');toggleMenu()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>History</button>
+    <button class="menu-item" onclick="showPage('settings');toggleMenu()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</button>
+  </div>
+</div>
+
 <div id="app">
-<!-- ═══ TODAY ═══ -->
-<div class="page" id="page-today">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-    <div><h1 id="greeting">Good morning</h1><p style="color:var(--text-dim);font-size:14px" id="today-date"></p></div>
-    <div style="display:flex;align-items:center;gap:8px"><div id="today-streak-badge"></div><div class="level-badge" id="level-badge">1</div></div>
+<!-- ═══ PREP (default) ═══ -->
+<div class="page active" id="page-prep">
+  <div class="card">
+    <div class="card-title">Log Exercises — <span id="bb-log-date-label"></span></div>
+    <div class="form-group"><input type="date" id="bb-log-date" onchange="loadBBLogForDate()"></div>
+    <div id="exercise-inputs"></div>
+    <button class="btn btn-primary" style="margin-top:12px" onclick="saveBBLog()">Save Exercises</button>
+  </div>
+  <div class="card"><div class="card-title">Personal Bests</div><div id="personal-bests"></div></div>
+</div>
+
+<!-- ═══ MEALS ═══ -->
+<div class="page" id="page-meals">
+  <div class="card">
+    <div class="card-title">Add Meal</div>
+    <div class="form-group"><label class="form-label">Date</label><input type="date" id="meal-date"></div>
+    <div class="form-group"><label class="form-label">What did you eat?</label><input type="text" id="meal-food" placeholder="e.g. 2 eggs, toast, coffee"></div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Calories (est.)</label><input type="number" id="meal-cals" placeholder="auto" inputmode="numeric"></div>
+    </div>
+    <div id="cal-estimate-hint" style="font-size:12px;color:var(--orange);margin-bottom:8px;display:none"></div>
+    <button class="btn btn-primary" onclick="addMeal()">Add Meal</button>
   </div>
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div class="card-title" style="margin-bottom:0">Level <span id="level-num">1</span> — <span id="level-title">Beginner</span></div>
-      <div style="font-size:13px;font-weight:700;color:var(--yellow)" id="total-points">0 pts</div>
-    </div>
-    <div class="xp-bar-outer"><div class="xp-bar-fill" id="xp-bar" style="width:0%"></div><div class="xp-bar-text" id="xp-text">0 / 100 XP</div></div>
-    <div style="display:flex;justify-content:space-between;margin-top:6px"><div class="metric-sub" id="multiplier-display"></div><div class="metric-sub" id="today-points-display"></div></div>
+    <div class="card-title">Today's Meals</div>
+    <div class="cal-summary" id="meal-cal-summary"></div>
+    <div id="meal-list"></div>
   </div>
+</div>
+
+<!-- ═══ WEIGHT ═══ -->
+<div class="page" id="page-weight">
+  <div class="card">
+    <div class="card-title">Check-in</div>
+    <div class="form-group"><label class="form-label">Date</label><input type="date" id="log-date"></div>
+    <div class="form-group"><label class="form-label">Weight (lbs)</label><input type="number" id="log-weight" placeholder="e.g. 198" step="0.1" inputmode="decimal"></div>
+    <div class="form-group"><label class="form-label">Workouts</label>
+      <div class="chip-group" id="workout-chips">
+        <div class="chip" data-val="karate" onclick="toggleChip(this)">Karate</div>
+        <div class="chip" data-val="soccer" onclick="toggleChip(this)">Soccer</div>
+        <div class="chip" data-val="weights" onclick="toggleChip(this)">Weights</div>
+        <div class="chip" data-val="blackbelt-prep" onclick="toggleChip(this)">Blackbelt Prep</div>
+        <div class="chip" data-val="run" onclick="toggleChip(this)">Run</div>
+        <div class="chip" data-val="other" onclick="toggleChip(this)">Other</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Last night</div>
+    <div class="toggle-row"><div><div class="toggle-label">Late-night drink last night?</div><div class="toggle-sub">Log this morning — did you have a drink?</div></div><label class="toggle"><input type="checkbox" id="log-drink"><span class="toggle-slider"></span></label></div>
+    <div class="toggle-row"><div><div class="toggle-label">Late-night snack last night?</div><div class="toggle-sub">No snacking after dinner = steady progress</div></div><label class="toggle"><input type="checkbox" id="log-snack"><span class="toggle-slider"></span></label></div>
+  </div>
+  <button class="btn btn-primary" style="margin-bottom:14px" onclick="saveLog()">Save Daily Log</button>
+  <div class="card"><div class="card-title">Recent Logs</div><div id="recent-logs"></div></div>
+</div>
+
+<!-- ═══ OVERVIEW (in menu) ═══ -->
+<div class="page" id="page-overview">
+  <h2>Overview</h2>
   <div class="card">
     <div class="card-title">Weight</div>
     <div style="display:flex;justify-content:space-between;align-items:center">
@@ -146,7 +237,6 @@ textarea{resize:vertical;min-height:60px}
       <div style="text-align:right"><div class="metric-sub">Goal: 185 lbs</div><div class="progress-bar" style="width:120px"><div class="progress-fill green" id="today-weight-progress" style="width:0%"></div></div></div>
     </div>
   </div>
-  <!-- Calories today -->
   <div class="card">
     <div class="card-title">Calories Today</div>
     <div class="cal-summary" id="today-cal-summary">
@@ -167,83 +257,9 @@ textarea{resize:vertical;min-height:60px}
     <div class="progress-bar" style="margin-top:8px"><div class="progress-fill accent" id="countdown-progress" style="width:0%"></div></div>
     <div class="metric-sub" style="text-align:center;margin-top:6px" id="countdown-sub"></div>
   </div>
-  <button class="btn btn-primary" style="margin-top:8px" onclick="showPage('log')">Log Today</button>
 </div>
 
-<!-- ═══ LOG ═══ -->
-<div class="page" id="page-log">
-  <h2>Daily Log</h2>
-  <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchLogTab('daily')">Daily</button>
-    <button class="tab-btn" onclick="switchLogTab('meals')">Meals</button>
-  </div>
-  <!-- Daily tab -->
-  <div id="log-tab-daily">
-    <div class="card">
-      <div class="card-title">Check-in</div>
-      <div class="form-group"><label class="form-label">Date</label><input type="date" id="log-date"></div>
-      <div class="form-group"><label class="form-label">Weight (lbs)</label><input type="number" id="log-weight" placeholder="e.g. 198" step="0.1" inputmode="decimal"></div>
-      <div class="form-group"><label class="form-label">Workouts</label>
-        <div class="chip-group" id="workout-chips">
-          <div class="chip" data-val="karate" onclick="toggleChip(this)">Karate</div>
-          <div class="chip" data-val="soccer" onclick="toggleChip(this)">Soccer</div>
-          <div class="chip" data-val="weights" onclick="toggleChip(this)">Weights</div>
-          <div class="chip" data-val="blackbelt-prep" onclick="toggleChip(this)">Blackbelt Prep</div>
-          <div class="chip" data-val="run" onclick="toggleChip(this)">Run</div>
-          <div class="chip" data-val="other" onclick="toggleChip(this)">Other</div>
-        </div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Last night</div>
-      <div class="toggle-row"><div><div class="toggle-label">Late-night drink last night?</div><div class="toggle-sub">Log this morning — did you have a drink?</div></div><label class="toggle"><input type="checkbox" id="log-drink"><span class="toggle-slider"></span></label></div>
-      <div class="toggle-row"><div><div class="toggle-label">Late-night snack last night?</div><div class="toggle-sub">No snacking after dinner = steady progress</div></div><label class="toggle"><input type="checkbox" id="log-snack"><span class="toggle-slider"></span></label></div>
-    </div>
-    <button class="btn btn-primary" style="margin-bottom:14px" onclick="saveLog()">Save Daily Log</button>
-    <div class="card"><div class="card-title">Recent Logs</div><div id="recent-logs"></div></div>
-  </div>
-  <!-- Meals tab -->
-  <div id="log-tab-meals" style="display:none">
-    <div class="card">
-      <div class="card-title">Add Meal</div>
-      <div class="form-group"><label class="form-label">Date</label><input type="date" id="meal-date"></div>
-      <div class="form-group"><label class="form-label">What did you eat?</label><input type="text" id="meal-food" placeholder="e.g. 2 eggs, toast, coffee"></div>
-      <div class="grid-2">
-        <div class="form-group"><label class="form-label">Calories (est.)</label><input type="number" id="meal-cals" placeholder="auto" inputmode="numeric"></div>
-      </div>
-      <div id="cal-estimate-hint" style="font-size:12px;color:var(--orange);margin-bottom:8px;display:none"></div>
-      <button class="btn btn-primary" onclick="addMeal()">Add Meal</button>
-    </div>
-    <div class="card">
-      <div class="card-title">Today's Meals</div>
-      <div class="cal-summary" id="meal-cal-summary"></div>
-      <div id="meal-list"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ BLACKBELT PREP ═══ -->
-<div class="page" id="page-blackbelt">
-  <h2>Blackbelt Prep</h2>
-  <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchBBTab('train')">Train</button>
-    <button class="tab-btn" onclick="switchBBTab('medals')">Medals</button>
-    <button class="tab-btn" onclick="switchBBTab('history')">History</button>
-  </div>
-  <div id="bb-tab-train">
-    <div class="card">
-      <div class="card-title">Log Exercises — <span id="bb-log-date-label"></span></div>
-      <div class="form-group"><input type="date" id="bb-log-date" onchange="loadBBLogForDate()"></div>
-      <div id="exercise-inputs"></div>
-      <button class="btn btn-primary" style="margin-top:12px" onclick="saveBBLog()">Save Exercises</button>
-    </div>
-    <div class="card"><div class="card-title">Personal Bests</div><div id="personal-bests"></div></div>
-  </div>
-  <div id="bb-tab-medals" style="display:none"><div class="card"><div class="card-title">Medals & Achievements</div><div class="medal-grid" id="medal-grid"></div></div></div>
-  <div id="bb-tab-history" style="display:none"><div class="card"><div class="card-title">Exercise History</div><div id="bb-history-list"></div></div></div>
-</div>
-
-<!-- ═══ PROGRESS ═══ -->
+<!-- ═══ PROGRESS (in menu) ═══ -->
 <div class="page" id="page-progress">
   <h2>Progress</h2>
   <div class="tab-bar">
@@ -266,7 +282,19 @@ textarea{resize:vertical;min-height:60px}
   </div>
 </div>
 
-<!-- ═══ SETTINGS ═══ -->
+<!-- ═══ MEDALS (in menu) ═══ -->
+<div class="page" id="page-medals">
+  <h2>Medals & Achievements</h2>
+  <div class="medal-grid" id="medal-grid"></div>
+</div>
+
+<!-- ═══ HISTORY (in menu) ═══ -->
+<div class="page" id="page-history">
+  <h2>Exercise History</h2>
+  <div id="bb-history-list"></div>
+</div>
+
+<!-- ═══ SETTINGS (in menu) ═══ -->
 <div class="page" id="page-settings">
   <h2>Settings</h2>
   <div class="card"><div class="card-title">Goals</div>
@@ -329,13 +357,7 @@ textarea{resize:vertical;min-height:60px}
 </div>
 </div><!-- /app -->
 
-<nav>
-  <button class="active" onclick="showPage('today')" id="nav-today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Today</button>
-  <button onclick="showPage('log')" id="nav-log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Log</button>
-  <button onclick="showPage('blackbelt')" id="nav-blackbelt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>Prep</button>
-  <button onclick="showPage('progress')" id="nav-progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Progress</button>
-  <button onclick="showPage('settings')" id="nav-settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</button>
-</nav>
+<nav></nav>
 
 <div class="modal-overlay" id="confirm-modal"><div class="modal-content"><div class="modal-title" id="confirm-title">Are you sure?</div><p style="color:var(--text-dim);margin-bottom:20px" id="confirm-msg"></p><div style="display:flex;gap:8px"><button class="btn btn-secondary" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn btn-danger" style="flex:1" id="confirm-action">Delete</button></div></div></div>
 
@@ -635,15 +657,43 @@ function getMultiplierForWeek(wn){return +(1+.5*Math.pow(Math.min(1,wn/getTotalW
 // ═══════════════════════════════════════════════════════════
 //  NAVIGATION
 // ═══════════════════════════════════════════════════════════
-let currentPage='today';
+let currentPage='prep';
+const PRIMARY_TABS=['prep','meals','weight'];
 function showPage(page){
   currentPage=page;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
-  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-  document.getElementById('nav-'+page).classList.add('active');
+  document.querySelectorAll('.main-tab').forEach(b=>b.classList.remove('active'));
+  const navBtn=document.getElementById('nav-'+page);
+  if(navBtn)navBtn.classList.add('active');
   document.getElementById('app').scrollTop=0;
-  if(page==='today')renderToday();else if(page==='log')initLog();else if(page==='blackbelt')renderBlackbelt();else if(page==='progress')renderProgress();else if(page==='settings')initSettings();
+  if(page==='prep')renderBlackbelt();
+  else if(page==='meals'){document.getElementById('meal-date').value=todayStr();renderMealList()}
+  else if(page==='weight')initWeight();
+  else if(page==='overview')renderToday();
+  else if(page==='progress')renderProgress();
+  else if(page==='medals')renderMedals();
+  else if(page==='history')renderBBHistory();
+  else if(page==='settings')initSettings();
+  updateStatusBar();
+}
+function toggleMenu(){document.getElementById('menu-overlay').classList.toggle('show')}
+function updateStatusBar(){
+  const st=calcStreaks(),xp=getTotalPoints(),lvl=getLevel(xp),nxt=getNextLevel(xp);
+  document.getElementById('status-streak').textContent=st.logStreak+'-day streak';
+  document.getElementById('status-level').textContent=lvl.level;
+  document.getElementById('status-pts').textContent=xp.toLocaleString()+' pts';
+  const now=new Date(),h=now.getHours();
+  document.getElementById('greeting').textContent=(h<12?'Good morning':h<17?'Good afternoon':'Good evening')+', Tanner';
+  document.getElementById('today-date').textContent=now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  document.getElementById('level-num').textContent=lvl.level;
+  document.getElementById('level-title').textContent=lvl.title;
+  document.getElementById('total-points').textContent=xp.toLocaleString()+' pts';
+  if(nxt){const xi=xp-lvl.xp,xn=nxt.xp-lvl.xp;document.getElementById('xp-bar').style.width=Math.min(100,(xi/xn)*100)+'%';document.getElementById('xp-text').textContent=xi+' / '+xn+' XP'}
+  else{document.getElementById('xp-bar').style.width='100%';document.getElementById('xp-text').textContent='MAX LEVEL'}
+}
+function initWeight(){
+  document.getElementById('log-date').value=todayStr();loadLogForDate();renderRecentLogs();
 }
 function toast(msg,isP){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(isP?' points-toast':'');setTimeout(()=>t.className='toast',2500)}
 function closeModal(){document.getElementById('confirm-modal').classList.remove('show')}
@@ -651,7 +701,7 @@ function confirmClear(){
   document.getElementById('confirm-title').textContent='Clear all data?';
   document.getElementById('confirm-msg').textContent='This will permanently delete all logs, settings, and progress.';
   document.getElementById('confirm-action').textContent='Clear Everything';
-  document.getElementById('confirm-action').onclick=()=>{['settings','dailyLogs','bbLogs','baselines','mealLogs'].forEach(k=>localStorage.removeItem('ft_'+k));closeModal();toast('All data cleared');showPage('today')};
+  document.getElementById('confirm-action').onclick=()=>{['settings','dailyLogs','bbLogs','baselines','mealLogs'].forEach(k=>localStorage.removeItem('ft_'+k));closeModal();toast('All data cleared');showPage('prep')};
   document.getElementById('confirm-modal').classList.add('show');
 }
 function toggleChip(el){el.classList.toggle('selected')}
@@ -694,19 +744,15 @@ function renderToday(){
 }
 function renderLevelBar(){
   const xp=getTotalPoints(),lvl=getLevel(xp),nxt=getNextLevel(xp),tp=getTodayPoints(),m=getMultiplier();
-  document.getElementById('level-badge').textContent=lvl.level;document.getElementById('level-num').textContent=lvl.level;
+  document.getElementById('level-num').textContent=lvl.level;
   document.getElementById('level-title').textContent=lvl.title;document.getElementById('total-points').textContent=xp.toLocaleString()+' pts';
   if(nxt){const xi=xp-lvl.xp,xn=nxt.xp-lvl.xp;document.getElementById('xp-bar').style.width=Math.min(100,(xi/xn)*100)+'%';document.getElementById('xp-text').textContent=`${xi} / ${xn} XP to Level ${nxt.level}`}
   else{document.getElementById('xp-bar').style.width='100%';document.getElementById('xp-text').textContent='MAX LEVEL'}
-  document.getElementById('multiplier-display').innerHTML=m>1?`<span class="multiplier">x${m} points</span>`:'x1.0 points';
-  document.getElementById('today-points-display').textContent=`Today: +${tp}`;
 }
 function getLatestWeight(logs){const d=Object.keys(logs).filter(d=>logs[d].weight).sort().reverse();return d.length>0?logs[d[0]].weight:null}
 function renderStreaks(){
   const s=calcStreaks();
   document.getElementById('streak-grid').innerHTML=`<div class="streak-display"><div><div class="streak-number" style="color:var(--green)">${s.cleanStreak}</div><div class="streak-label">Clean nights</div></div></div><div class="streak-display"><div><div class="streak-number" style="color:var(--accent)">${s.workoutStreak}</div><div class="streak-label">Workout days</div></div></div><div class="streak-display"><div><div class="streak-number" style="color:var(--orange)">${s.logStreak}</div><div class="streak-label">Log streak</div></div></div>`;
-  const b=document.getElementById('today-streak-badge');
-  if(s.cleanStreak>=7)b.innerHTML=`<span class="badge badge-green">🔥 ${s.cleanStreak}-day clean</span>`;else if(s.cleanStreak>=3)b.innerHTML=`<span class="badge badge-green">${s.cleanStreak}-day clean</span>`;else b.innerHTML='';
 }
 function renderCountdown(){
   const s=getSettings(),td=new Date(s.testDate+'T00:00:00'),now=toEST(new Date()),diff=td-now;
@@ -717,6 +763,7 @@ function renderCountdown(){
   document.getElementById('countdown-sub').textContent=`Week ${getCurrentWeekNumber()} of ${getTotalWeeks()} — ${Math.round(pct)}% complete`;
 }
 function renderWeekTargets(){
+  if(!document.getElementById('week-label'))return;
   const wk=getCurrentWeekNumber(),plan=getWeekPlan(wk),s=getSettings(),spw=s.sessionsPerWeek||3,sess=getSessionsThisWeek();
   document.getElementById('week-label').textContent=wk>0?`Week ${wk}`:'Pre-season';
   const dots=[];for(let i=1;i<=spw;i++)dots.push(`<div class="session-dot ${i<=sess.done?'done':''}">${i<=sess.done?'✓':i}</div>`);
@@ -729,16 +776,8 @@ function renderWeekTargets(){
 // ═══════════════════════════════════════════════════════════
 //  LOG PAGE
 // ═══════════════════════════════════════════════════════════
-function switchLogTab(tab){
-  document.querySelectorAll('#page-log .tab-btn').forEach((b,i)=>b.classList.toggle('active',['daily','meals'][i]===tab));
-  document.getElementById('log-tab-daily').style.display=tab==='daily'?'block':'none';
-  document.getElementById('log-tab-meals').style.display=tab==='meals'?'block':'none';
-  if(tab==='meals'){document.getElementById('meal-date').value=todayStr();renderMealList()}
-}
-function initLog(){
-  document.getElementById('log-date').value=todayStr();loadLogForDate();renderRecentLogs();
-  document.getElementById('meal-date').value=todayStr();renderMealList();
-}
+function switchLogTab(tab){}
+function initLog(){}
 function loadLogForDate(){
   const date=document.getElementById('log-date').value,logs=getDailyLogs(),log=logs[date];
   document.getElementById('log-weight').value=log?.weight||'';
@@ -763,7 +802,7 @@ function saveLog(){
   syncToSheet('daily',{date,...logs[date]});
   const{pts,breakdown}=calcDayPoints(date),mult=getMultiplierForDate(date);
   const nm=getMedals().filter(m=>m.earned&&!mb.includes(m.id));
-  toast(`Log saved ✓  +${Math.round(pts*mult)} pts`,true);showPointsPopup(pts,breakdown,nm);renderRecentLogs();
+  toast(`Log saved ✓  +${Math.round(pts*mult)} pts`,true);showPointsPopup(pts,breakdown,nm);renderRecentLogs();updateStatusBar();
 }
 function renderRecentLogs(){
   const logs=getDailyLogs(),dates=Object.keys(logs).sort().reverse().slice(0,10),c=document.getElementById('recent-logs');
@@ -813,7 +852,7 @@ let currentSets={};// temp state for current logging session
 function renderBlackbelt(){
   document.getElementById('bb-log-date').value=todayStr();
   document.getElementById('bb-log-date-label').textContent=new Date(todayStr()+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  renderExerciseInputs();loadBBLogForDate();renderPersonalBests();renderWeekPlan();renderMedals();renderBBHistory();
+  renderExerciseInputs();loadBBLogForDate();renderPersonalBests();renderWeekPlan();
 }
 function renderExerciseInputs(){
   const c=document.getElementById('exercise-inputs');
@@ -882,7 +921,7 @@ function saveBBLog(){
   if(!dl[date].workouts.includes('blackbelt-prep')){dl[date].workouts.push('blackbelt-prep');save('dailyLogs',dl)}
   const{pts,breakdown}=calcDayPoints(date),mult=getMultiplierForDate(date);
   const nm=getMedals().filter(m=>m.earned&&!mb.includes(m.id));
-  toast(`Exercises saved ✓  +${Math.round(pts*mult)} pts`,true);showPointsPopup(pts,breakdown,nm);
+  toast(`Exercises saved ✓  +${Math.round(pts*mult)} pts`,true);showPointsPopup(pts,breakdown,nm);updateStatusBar();
   renderPersonalBests();renderMedals();renderBBHistory();
 }
 
@@ -905,11 +944,7 @@ function renderPersonalBests(){
   }).join('');
 }
 
-function switchBBTab(tab){
-  const tabs=['train','medals','history'];
-  document.querySelectorAll('#page-blackbelt .tab-btn').forEach((b,i)=>b.classList.toggle('active',tabs[i]===tab));
-  tabs.forEach(t=>{const el=document.getElementById('bb-tab-'+t);if(el)el.style.display=t===tab?'block':'none'});
-}
+function switchBBTab(tab){}
 function renderWeekPlan(){
   const table=document.getElementById('week-plan-table');if(!table)return;
   const tw=getTotalWeeks(),cw=getCurrentWeekNumber(),s=getSettings(),spw=s.sessionsPerWeek||3;
@@ -928,7 +963,7 @@ function renderBBHistory(){
   if(!dates.length){c.innerHTML='<p style="color:var(--text-dim);font-size:13px">No exercise logs yet.</p>';return}
   c.innerHTML=dates.map(d=>{const log=logs[d],dl=new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',weekday:'short'});
     const summary=EXERCISES.filter(ex=>log[ex.key]).map(ex=>{const total=getTotalReps(log[ex.key]),sets=getSetCount(log[ex.key]);return`${ex.icon}${total}${sets>1?`<span style="font-size:10px;color:var(--text-dim)">(${sets}s)</span>`:''}`}).join('  ');
-    return`<div class="history-item" onclick="document.getElementById('bb-log-date').value='${d}';loadBBLogForDate()"><div><div class="history-detail">${dl}</div><div class="history-date">${summary}</div></div></div>`}).join('');
+    return`<div class="history-item" onclick="document.getElementById('bb-log-date').value='${d}';loadBBLogForDate();showPage('prep')"><div><div class="history-detail">${dl}</div><div class="history-date">${summary}</div></div></div>`}).join('');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1088,7 +1123,7 @@ function exportCSV(){
 // ═══════════════════════════════════════════════════════════
 //  INIT + PULL-TO-REFRESH
 // ═══════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded',()=>{applyTheme(getTheme());showPage('today')});
+document.addEventListener('DOMContentLoaded',()=>{applyTheme(getTheme());showPage('prep')});
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
 
 (function(){const app=document.getElementById('app'),ind=document.getElementById('ptr-indicator'),th=80;let sY=0,pd=0,pulling=false;

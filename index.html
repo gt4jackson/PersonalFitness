@@ -179,31 +179,38 @@ textarea{resize:vertical;min-height:60px}
   </div>
   <!-- Daily tab -->
   <div id="log-tab-daily">
-    <div class="form-group"><label class="form-label">Date</label><input type="date" id="log-date"></div>
-    <div class="form-group"><label class="form-label">Weight (lbs)</label><input type="number" id="log-weight" placeholder="e.g. 198" step="0.1" inputmode="decimal"></div>
-    <div class="form-group"><label class="form-label">Workouts</label>
-      <div class="chip-group" id="workout-chips">
-        <div class="chip" data-val="karate" onclick="toggleChip(this)">Karate</div>
-        <div class="chip" data-val="soccer" onclick="toggleChip(this)">Soccer</div>
-        <div class="chip" data-val="weights" onclick="toggleChip(this)">Weights</div>
-        <div class="chip" data-val="blackbelt-prep" onclick="toggleChip(this)">Blackbelt Prep</div>
-        <div class="chip" data-val="run" onclick="toggleChip(this)">Run</div>
-        <div class="chip" data-val="other" onclick="toggleChip(this)">Other</div>
+    <div class="card">
+      <div class="card-title">Check-in</div>
+      <div class="form-group"><label class="form-label">Date</label><input type="date" id="log-date"></div>
+      <div class="form-group"><label class="form-label">Weight (lbs)</label><input type="number" id="log-weight" placeholder="e.g. 198" step="0.1" inputmode="decimal"></div>
+      <div class="form-group"><label class="form-label">Workouts</label>
+        <div class="chip-group" id="workout-chips">
+          <div class="chip" data-val="karate" onclick="toggleChip(this)">Karate</div>
+          <div class="chip" data-val="soccer" onclick="toggleChip(this)">Soccer</div>
+          <div class="chip" data-val="weights" onclick="toggleChip(this)">Weights</div>
+          <div class="chip" data-val="blackbelt-prep" onclick="toggleChip(this)">Blackbelt Prep</div>
+          <div class="chip" data-val="run" onclick="toggleChip(this)">Run</div>
+          <div class="chip" data-val="other" onclick="toggleChip(this)">Other</div>
+        </div>
       </div>
     </div>
-    <div class="card" style="padding:12px">
+    <div class="card">
+      <div class="card-title">Last night</div>
       <div class="toggle-row"><div><div class="toggle-label">Late-night drink last night?</div><div class="toggle-sub">Log this morning — did you have a drink?</div></div><label class="toggle"><input type="checkbox" id="log-drink"><span class="toggle-slider"></span></label></div>
       <div class="toggle-row"><div><div class="toggle-label">Late-night snack last night?</div><div class="toggle-sub">No snacking after dinner = steady progress</div></div><label class="toggle"><input type="checkbox" id="log-snack"><span class="toggle-slider"></span></label></div>
     </div>
-    <div class="form-group" style="margin-top:12px"><label class="form-label">Notes</label><textarea id="log-notes" placeholder="How are you feeling?"></textarea></div>
-    <button class="btn btn-primary" onclick="saveLog()">Save Daily Log</button>
-    <div class="card" style="margin-top:20px"><div class="card-title">Recent Logs</div><div id="recent-logs"></div></div>
+    <div class="card">
+      <div class="card-title">Notes</div>
+      <textarea id="log-notes" placeholder="How are you feeling?" style="margin-bottom:12px"></textarea>
+      <button class="btn btn-primary" onclick="saveLog()">Save Daily Log</button>
+    </div>
+    <div class="card"><div class="card-title">Recent Logs</div><div id="recent-logs"></div></div>
   </div>
   <!-- Meals tab -->
   <div id="log-tab-meals" style="display:none">
-    <div class="form-group"><label class="form-label">Date</label><input type="date" id="meal-date"></div>
     <div class="card">
       <div class="card-title">Add Meal</div>
+      <div class="form-group"><label class="form-label">Date</label><input type="date" id="meal-date"></div>
       <div class="form-group"><label class="form-label">What did you eat?</label><input type="text" id="meal-food" placeholder="e.g. 2 eggs, toast, coffee"></div>
       <div class="grid-2">
         <div class="form-group"><label class="form-label">Calories (est.)</label><input type="number" id="meal-cals" placeholder="auto" inputmode="numeric"></div>

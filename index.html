@@ -120,6 +120,17 @@ textarea{resize:vertical;min-height:60px}
 .add-set-input{width:60px;text-align:center;padding:6px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:var(--font)}
 .add-set-btn{padding:6px 12px;border:none;border-radius:var(--radius-sm);background:var(--accent);color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)}
 .add-set-btn:active{transform:scale(.95)}
+/* Prescribed set UI */
+.prescribed-row{padding:8px 0;border-bottom:1px solid var(--border)}
+.prescribed-row:last-child{border-bottom:none}
+.prescribed-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+.prescribed-target{font-size:11px;color:var(--text-dim)}
+.prescribed-sets{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center}
+.set-slot{min-width:36px;height:30px;padding:0 8px;border-radius:8px;border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--text-dim);cursor:pointer;transition:all .2s}
+.set-slot.done{border-style:solid;border-color:var(--green);background:var(--green-glow);color:var(--green)}
+.set-slot.partial{border-style:solid;border-color:var(--orange);background:var(--orange-glow);color:var(--orange)}
+.prescribed-complete{font-size:11px;font-weight:700;color:var(--green);margin-left:4px}
+.progression-banner{background:var(--accent-glow);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:13px;color:var(--accent);display:flex;align-items:center;gap:8px}
 </style>
 </head>
 <body>
@@ -173,13 +184,34 @@ textarea{resize:vertical;min-height:60px}
 <div id="app">
 <!-- ═══ PREP (default) ═══ -->
 <div class="page active" id="page-prep">
-  <div class="card">
-    <div class="card-title">Log Exercises — <span id="bb-log-date-label"></span></div>
-    <div class="form-group"><input type="date" id="bb-log-date" onchange="loadBBLogForDate()"></div>
-    <div id="exercise-inputs"></div>
-    <button class="btn btn-primary" style="margin-top:12px" onclick="saveBBLog()">Save Exercises</button>
+  <div class="tab-bar" id="routine-switcher">
+    <button class="tab-btn active" onclick="switchRoutine('blackbelt')">Blackbelt</button>
+    <button class="tab-btn" onclick="switchRoutine('chest')">Chest</button>
   </div>
-  <div class="card"><div class="card-title">Personal Bests</div><div id="personal-bests"></div></div>
+  <!-- Blackbelt routine -->
+  <div id="routine-blackbelt">
+    <div class="card">
+      <div class="card-title">Log Exercises — <span id="bb-log-date-label"></span></div>
+      <div class="form-group"><input type="date" id="bb-log-date" onchange="loadBBLogForDate()"></div>
+      <div id="exercise-inputs"></div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="saveBBLog()">Save Exercises</button>
+    </div>
+    <div class="card"><div class="card-title">Personal Bests</div><div id="personal-bests"></div></div>
+  </div>
+  <!-- Chest routine -->
+  <div id="routine-chest" style="display:none">
+    <div class="card">
+      <div class="card-title">Chest Development — <span id="chest-log-date-label"></span></div>
+      <div class="form-group"><input type="date" id="chest-log-date" onchange="loadChestLogForDate()"></div>
+      <div id="chest-exercise-inputs"></div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="saveChestLog()">Save Chest Workout</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Warm-up reminder</div>
+      <p style="font-size:13px;color:var(--text-dim)">5 min: wrist circles, arm circles, 10 slow scapular push-ups. Rest 60-90s between sets.</p>
+    </div>
+    <div class="card"><div class="card-title">Session History</div><div id="chest-history-list"></div></div>
+  </div>
 </div>
 
 <!-- ═══ MEALS ═══ -->
@@ -264,6 +296,7 @@ textarea{resize:vertical;min-height:60px}
   <h2>Progress</h2>
   <div class="tab-bar">
     <button class="tab-btn active" onclick="switchProgressTab('weight')">Weight</button>
+    <button class="tab-btn" onclick="switchProgressTab('pushups')">Push-ups</button>
     <button class="tab-btn" onclick="switchProgressTab('habits')">Habits</button>
     <button class="tab-btn" onclick="switchProgressTab('fitness')">Fitness</button>
   </div>
@@ -271,6 +304,15 @@ textarea{resize:vertical;min-height:60px}
     <div class="card"><div class="card-title">Weight Trend</div><canvas class="mini-chart" id="weight-chart"></canvas></div>
     <div class="grid-2"><div class="card" style="text-align:center"><div class="card-title">Starting</div><div style="font-size:24px;font-weight:700" id="prog-start-weight">210</div><div class="metric-sub">lbs</div></div><div class="card" style="text-align:center"><div class="card-title">Current</div><div style="font-size:24px;font-weight:700" id="prog-current-weight">—</div><div class="metric-sub">lbs</div></div></div>
     <div class="card" style="text-align:center"><div class="card-title">Total Lost</div><div style="font-size:32px;font-weight:800;color:var(--green)" id="prog-total-lost">0</div><div class="metric-sub">of 25 lbs goal</div><div class="progress-bar" style="margin-top:8px"><div class="progress-fill green" id="prog-weight-bar" style="width:0%"></div></div></div>
+  </div>
+  <div id="progress-tab-pushups" style="display:none">
+    <div class="card"><div class="card-title">Daily Push-ups (All Routines)</div><canvas class="mini-chart" id="pushup-chart" style="height:220px"></canvas></div>
+    <div class="grid-2">
+      <div class="card" style="text-align:center"><div class="card-title">Today</div><div style="font-size:28px;font-weight:800" id="pushup-today-count">0</div><div class="metric-sub">push-ups</div></div>
+      <div class="card" style="text-align:center"><div class="card-title">100+ Streak</div><div style="font-size:28px;font-weight:800;color:var(--accent)" id="pushup-streak-count">0</div><div class="metric-sub">days</div></div>
+    </div>
+    <div class="card" style="text-align:center"><div class="card-title">7-Day Average</div><div style="font-size:32px;font-weight:800;color:var(--green)" id="pushup-7d-avg">0</div><div class="metric-sub">push-ups / day</div></div>
+    <div class="card"><div class="card-title">Breakdown by Source</div><div id="pushup-breakdown"></div></div>
   </div>
   <div id="progress-tab-habits" style="display:none">
     <div class="card"><div class="card-title">Late-Night Habits (Previous Night) — Last 30 Days</div><canvas class="mini-chart" id="habits-chart" style="height:150px"></canvas></div>
@@ -667,7 +709,10 @@ function showPage(page){
   const navBtn=document.getElementById('nav-'+page);
   if(navBtn)navBtn.classList.add('active');
   document.getElementById('app').scrollTop=0;
-  if(page==='prep')renderBlackbelt();
+  if(page==='prep'){
+    if(currentRoutine==='chest'){renderChestInputs();loadChestLogForDate();renderChestHistory()}
+    else renderBlackbelt();
+  }
   else if(page==='meals'){document.getElementById('meal-date').value=todayStr();renderMealList()}
   else if(page==='weight')initWeight();
   else if(page==='overview')renderToday();
@@ -788,6 +833,7 @@ function loadLogForDate(){
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('log-date').addEventListener('change',loadLogForDate);
   document.getElementById('meal-date').addEventListener('change',renderMealList);
+  document.getElementById('chest-log-date').addEventListener('change',loadChestLogForDate);
   document.getElementById('meal-food').addEventListener('input',function(){
     const est=estimateCalories(this.value);const hint=document.getElementById('cal-estimate-hint');
     if(est>0&&!document.getElementById('meal-cals').value){hint.textContent=`Estimated: ~${est} cal`;hint.style.display='block'}else{hint.style.display='none'}
@@ -969,12 +1015,14 @@ function renderBBHistory(){
 // ═══════════════════════════════════════════════════════════
 //  PROGRESS PAGE
 // ═══════════════════════════════════════════════════════════
-function renderProgress(){renderWeightChart();renderWeightStats();renderHabitsChart();renderHabitsStats();renderFitnessChart();renderReadinessRings()}
+function renderProgress(){renderWeightChart();renderWeightStats();renderPushupChart();renderHabitsChart();renderHabitsStats();renderFitnessChart();renderReadinessRings()}
 function switchProgressTab(tab){
-  document.querySelectorAll('#page-progress .tab-btn').forEach((b,i)=>b.classList.toggle('active',['weight','habits','fitness'][i]===tab));
-  ['weight','habits','fitness'].forEach(t=>document.getElementById('progress-tab-'+t).style.display=t===tab?'block':'none');
+  const tabs=['weight','pushups','habits','fitness'];
+  document.querySelectorAll('#page-progress .tab-btn').forEach((b,i)=>b.classList.toggle('active',tabs[i]===tab));
+  tabs.forEach(t=>document.getElementById('progress-tab-'+t).style.display=t===tab?'block':'none');
   setTimeout(()=>{
     if(tab==='weight')renderWeightChart();
+    if(tab==='pushups')renderPushupChart();
     if(tab==='habits')renderHabitsChart();
     if(tab==='fitness'){renderFitnessChart();renderReadinessRings()}
   },50);
@@ -1021,6 +1069,60 @@ function renderWeightStats(){const logs=getDailyLogs(),s=getSettings(),lw=getLat
   document.getElementById('prog-start-weight').textContent=s.startWeight;document.getElementById('prog-current-weight').textContent=lw?lw.toFixed(1):'—';
   const lost=lw?s.startWeight-lw:0;document.getElementById('prog-total-lost').textContent=lost>0?lost.toFixed(1):'0';
   document.getElementById('prog-weight-bar').style.width=Math.min(100,Math.max(0,(lost/(s.startWeight-s.goalWeight))*100))+'%'}
+function getDailyPushups(){
+  const bb=getBBLogs(),cl=getChestLogs(),allDates=new Set([...Object.keys(bb),...Object.keys(cl)]);
+  const result={};
+  allDates.forEach(d=>{
+    let bbPushups=0,chestPushups=0;
+    if(bb[d]&&bb[d].pushups) bbPushups=getTotalReps(bb[d].pushups);
+    if(cl[d]){
+      CHEST_EXERCISES.forEach(ex=>{
+        if(cl[d][ex.key]) chestPushups+=cl[d][ex.key].filter(v=>v).reduce((s,v)=>s+v,0);
+      });
+    }
+    result[d]={bb:bbPushups,chest:chestPushups,total:bbPushups+chestPushups};
+  });
+  return result;
+}
+function renderPushupChart(){
+  const data=getDailyPushups(),dates=Object.keys(data).sort(),last30=dates.slice(-30);
+  if(!last30.length){drawLineChart('pushup-chart',[],{});return}
+  const cs=getComputedStyle(document.documentElement);
+  const bbPts=last30.map(d=>({y:data[d].bb})),chestPts=last30.map(d=>({y:data[d].chest})),totalPts=last30.map(d=>({y:data[d].total}));
+  const maxV=Math.max(100,...last30.map(d=>data[d].total));
+  const xLabels=last30.map(d=>new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+  drawLineChart('pushup-chart',[
+    {points:totalPts,color:cs.getPropertyValue('--accent').trim(),label:'Total'},
+    {points:bbPts,color:cs.getPropertyValue('--green').trim(),label:'Blackbelt'},
+    {points:chestPts,color:cs.getPropertyValue('--red').trim(),label:'Chest'}
+  ],{multiLine:true,minY:0,maxY:maxV+20,goalLine:100,xLabels});
+  // Stats
+  const today=todayStr(),td=data[today];
+  document.getElementById('pushup-today-count').textContent=td?td.total:0;
+  document.getElementById('pushup-today-count').style.color=td&&td.total>=100?'var(--green)':'var(--text)';
+  // 100+ streak
+  let streak=0;const allDates=Object.keys(data).sort().reverse();
+  for(const d of allDates){if(data[d].total>=100)streak++;else break}
+  document.getElementById('pushup-streak-count').textContent=streak;
+  // 7-day avg
+  const last7=dates.slice(-7),avg7=last7.length?Math.round(last7.reduce((s,d)=>s+data[d].total,0)/last7.length):0;
+  document.getElementById('pushup-7d-avg').textContent=avg7;
+  // Breakdown
+  const bk=document.getElementById('pushup-breakdown');
+  const recentDates=dates.slice(-7).reverse();
+  if(!recentDates.length){bk.innerHTML='<p style="color:var(--text-dim);font-size:13px">No data yet.</p>';return}
+  bk.innerHTML=recentDates.map(d=>{
+    const r=data[d],dl=new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    const pct100=r.total>=100;
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px;color:var(--text-dim)">${dl}</span>
+      <div style="display:flex;gap:10px;align-items:center;font-size:13px">
+        <span style="color:var(--green)">${r.bb>0?'BB:'+r.bb:''}</span>
+        <span style="color:var(--red)">${r.chest>0?'Chest:'+r.chest:''}</span>
+        <span style="font-weight:700;color:${pct100?'var(--green)':'var(--text)'}">${r.total}${pct100?' ✓':''}</span>
+      </div>
+    </div>`}).join('');
+}
 function renderHabitsChart(){const logs=getDailyLogs(),dates=[],d=toEST(new Date());for(let i=29;i>=0;i--){const dt=new Date(d);dt.setDate(dt.getDate()-i);dates.push(dateStrEST(dt))}
   {const canvas=document.getElementById('habits-chart');if(!canvas)return;const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();
     canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;ctx.scale(dpr,dpr);const W=rect.width,H=rect.height,pad={top:10,right:10,bottom:20,left:10},bW=(W-pad.left-pad.right)/30-2;
@@ -1041,6 +1143,149 @@ function renderFitnessChart(){const logs=getBBLogs(),dates=Object.keys(logs).sor
 function renderReadinessRings(){document.getElementById('readiness-rings').innerHTML=EXERCISES.map(ex=>{
   const best=getPersonalBest(ex.key),goal=GOAL_REPS[ex.key],pct=Math.min(100,(best/goal)*100),color=pct>=100?'var(--green)':pct>=70?'var(--accent)':'var(--orange)',r=24,circ=2*Math.PI*r,off=circ-(pct/100)*circ,u=ex.key==='plankSec'?'s':'';
   return`<div class="ring-container"><svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--border)" stroke-width="4"/><circle cx="30" cy="30" r="${r}" fill="none" stroke="${color}" stroke-width="4" stroke-dasharray="${circ}" stroke-dashoffset="${off}" transform="rotate(-90 30 30)" stroke-linecap="round"/><text x="30" y="33" text-anchor="middle" fill="${color}" font-size="11" font-weight="700">${Math.round(pct)}%</text></svg><div class="ring-label">${ex.icon} ${best}${u}/${goal}${u}</div></div>`}).join('')}
+
+// ═══════════════════════════════════════════════════════════
+//  CHEST DEVELOPMENT ROUTINE
+// ═══════════════════════════════════════════════════════════
+const CHEST_EXERCISES=[
+  {key:'pikePushUp',name:'Pike Push-Up',icon:'🔺',sets:3,reps:15,note:'Upper chest & delts'},
+  {key:'wideGripPushUp',name:'Wide Grip',icon:'🦅',sets:4,reps:25,note:'Outer & mid chest'},
+  {key:'standardPushUp',name:'Standard',icon:'💪',sets:4,reps:40,note:'Full chest baseline'},
+  {key:'diamondPushUp',name:'Diamond',icon:'💎',sets:4,reps:20,note:'Inner chest & triceps'},
+  {key:'declinePushUp',name:'Decline',icon:'⬆️',sets:4,reps:20,note:'Upper chest (feet up)'},
+  {key:'archerPushUp',name:'Archer',icon:'🏹',sets:3,reps:12,note:'Lateral (each side)'},
+  {key:'slowNegPushUp',name:'Slow Negative',icon:'🐢',sets:3,reps:10,note:'4-sec descent'}
+];
+let currentChestSets={};
+let currentRoutine='blackbelt';
+
+function getChestLogs(){return load('chestLogs',{})}
+function getChestProgression(){return load('chestProgression',{cleanSessions:0,level:1})}
+function saveChestProgression(p){save('chestProgression',p)}
+
+function switchRoutine(r){
+  currentRoutine=r;
+  document.querySelectorAll('#routine-switcher .tab-btn').forEach((b,i)=>b.classList.toggle('active',['blackbelt','chest'][i]===r));
+  document.getElementById('routine-blackbelt').style.display=r==='blackbelt'?'block':'none';
+  document.getElementById('routine-chest').style.display=r==='chest'?'block':'none';
+  if(r==='chest'){
+    document.getElementById('chest-log-date').value=todayStr();
+    document.getElementById('chest-log-date-label').textContent=new Date(todayStr()+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    renderChestInputs();loadChestLogForDate();renderChestHistory();
+  }
+}
+
+function renderChestInputs(){
+  const c=document.getElementById('chest-exercise-inputs');
+  const prog=getChestProgression();
+  c.innerHTML=CHEST_EXERCISES.map(ex=>{
+    const sets=ex.sets,reps=ex.reps;
+    const slotsHtml=Array.from({length:sets},(_, i)=>`<div class="set-slot" id="cslot-${ex.key}-${i}" onclick="toggleChestSet('${ex.key}',${i},${reps})">${reps}</div>`).join('');
+    return`<div class="prescribed-row">
+      <div class="prescribed-header">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:14px">${ex.icon}</span>
+          <span class="exercise-name">${ex.name}</span>
+        </div>
+        <span class="prescribed-target">${sets} × ${reps}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:2px">${ex.note}</div>
+      <div class="prescribed-sets" id="csets-${ex.key}">
+        ${slotsHtml}
+        <span class="prescribed-complete" id="cdone-${ex.key}"></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleChestSet(key,idx,targetReps){
+  if(!currentChestSets[key])currentChestSets[key]=[];
+  if(currentChestSets[key][idx]){
+    currentChestSets[key][idx]=null;
+  }else{
+    currentChestSets[key][idx]=targetReps;
+  }
+  renderChestSlots(key);
+}
+
+function renderChestSlots(key){
+  const ex=CHEST_EXERCISES.find(e=>e.key===key);
+  const sets=currentChestSets[key]||[];
+  let done=0;
+  for(let i=0;i<ex.sets;i++){
+    const slot=document.getElementById('cslot-'+key+'-'+i);
+    if(!slot)continue;
+    if(sets[i]){
+      slot.className='set-slot'+(sets[i]>=ex.reps?' done':' partial');
+      slot.textContent=sets[i];
+      done++;
+    }else{
+      slot.className='set-slot';
+      slot.textContent=ex.reps;
+    }
+  }
+  const doneEl=document.getElementById('cdone-'+key);
+  if(doneEl)doneEl.textContent=done===ex.sets?'✓':'';
+}
+
+function loadChestLogForDate(){
+  const date=document.getElementById('chest-log-date').value,logs=getChestLogs(),log=logs[date];
+  document.getElementById('chest-log-date-label').textContent=new Date(date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  currentChestSets={};
+  CHEST_EXERCISES.forEach(ex=>{
+    if(log&&log[ex.key]){
+      currentChestSets[ex.key]=[...log[ex.key]];
+    }
+    renderChestSlots(ex.key);
+  });
+}
+
+function saveChestLog(){
+  const date=document.getElementById('chest-log-date').value;if(!date)return;
+  const logs=getChestLogs(),entry={ts:Date.now()};let hasData=false;
+  let allComplete=true;
+  CHEST_EXERCISES.forEach(ex=>{
+    const sets=currentChestSets[ex.key];
+    if(sets&&sets.some(s=>s)){entry[ex.key]=[...sets];hasData=true}
+    const done=(sets||[]).filter(s=>s&&s>=ex.reps).length;
+    if(done<ex.sets)allComplete=false;
+  });
+  if(!hasData){toast('Tap sets to log them');return}
+  logs[date]=entry;save('chestLogs',logs);
+  // Track progression
+  const prog=getChestProgression();
+  if(allComplete){
+    prog.cleanSessions=(prog.cleanSessions||0)+1;
+    saveChestProgression(prog);
+    if(prog.cleanSessions>=3&&prog.cleanSessions%3===0){
+      toast('🔥 '+prog.cleanSessions+' clean sessions! Consider adding a set or increasing reps.');
+    }else{
+      toast('Chest workout saved ✓ — all sets complete!');
+    }
+  }else{
+    toast('Chest workout saved ✓');
+  }
+  // Sync to sheet
+  syncToSheet('chest',{date,exercises:entry});
+  // Update daily log
+  const dl=getDailyLogs();if(!dl[date])dl[date]={workouts:[],ts:Date.now()};if(!dl[date].workouts)dl[date].workouts=[];
+  if(!dl[date].workouts.includes('chest-dev')){dl[date].workouts.push('chest-dev');save('dailyLogs',dl)}
+  updateStatusBar();renderChestHistory();
+}
+
+function renderChestHistory(){
+  const logs=getChestLogs(),dates=Object.keys(logs).sort().reverse().slice(0,15),c=document.getElementById('chest-history-list');
+  if(!dates.length){c.innerHTML='<p style="color:var(--text-dim);font-size:13px">No chest workouts yet.</p>';return}
+  c.innerHTML=dates.map(d=>{
+    const log=logs[d],dl=new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',weekday:'short'});
+    const summary=CHEST_EXERCISES.filter(ex=>log[ex.key]&&log[ex.key].some(s=>s)).map(ex=>{
+      const done=(log[ex.key]||[]).filter(s=>s).length;
+      return`${ex.icon}${done}/${ex.sets}`;
+    }).join('  ');
+    const allDone=CHEST_EXERCISES.every(ex=>{const s=log[ex.key]||[];return s.filter(v=>v&&v>=ex.reps).length>=ex.sets});
+    return`<div class="history-item" onclick="document.getElementById('chest-log-date').value='${d}';loadChestLogForDate()"><div><div class="history-detail">${dl}${allDone?' <span style="color:var(--green)">✓</span>':''}</div><div class="history-date">${summary}</div></div></div>`
+  }).join('');
+}
 
 // ═══════════════════════════════════════════════════════════
 //  SETTINGS

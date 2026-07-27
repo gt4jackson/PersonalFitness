@@ -186,7 +186,8 @@ textarea{resize:vertical;min-height:60px}
 <div class="page active" id="page-prep">
   <div class="tab-bar" id="routine-switcher">
     <button class="tab-btn active" onclick="switchRoutine('blackbelt')">Blackbelt</button>
-    <button class="tab-btn" onclick="switchRoutine('chest')">Chest</button>
+    <button class="tab-btn" onclick="switchRoutine('upper')">Upper Body</button>
+    <button class="tab-btn" onclick="switchRoutine('legs')">Legs</button>
   </div>
   <!-- Blackbelt routine -->
   <div id="routine-blackbelt">
@@ -198,19 +199,33 @@ textarea{resize:vertical;min-height:60px}
     </div>
     <div class="card"><div class="card-title">Personal Bests</div><div id="personal-bests"></div></div>
   </div>
-  <!-- Chest routine -->
-  <div id="routine-chest" style="display:none">
+  <!-- Upper Body routine -->
+  <div id="routine-upper" style="display:none">
     <div class="card">
-      <div class="card-title">Chest Development — <span id="chest-log-date-label"></span></div>
-      <div class="form-group"><input type="date" id="chest-log-date" onchange="loadChestLogForDate()"></div>
-      <div id="chest-exercise-inputs"></div>
-      <button class="btn btn-primary" style="margin-top:12px" onclick="saveChestLog()">Save Chest Workout</button>
+      <div class="card-title">Upper Body — <span id="upper-log-date-label"></span></div>
+      <div class="form-group"><input type="date" id="upper-log-date" onchange="loadUpperLogForDate()"></div>
+      <div id="upper-exercise-inputs"></div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="saveUpperLog()">Save Upper Body Workout</button>
     </div>
     <div class="card">
       <div class="card-title">Warm-up reminder</div>
       <p style="font-size:13px;color:var(--text-dim)">5 min: wrist circles, arm circles, 10 slow scapular push-ups. Rest 60-90s between sets.</p>
     </div>
-    <div class="card"><div class="card-title">Session History</div><div id="chest-history-list"></div></div>
+    <div class="card"><div class="card-title">Session History</div><div id="upper-history-list"></div></div>
+  </div>
+  <!-- Legs routine -->
+  <div id="routine-legs" style="display:none">
+    <div class="card">
+      <div class="card-title">Legs (Explosive) — <span id="legs-log-date-label"></span></div>
+      <div class="form-group"><input type="date" id="legs-log-date" onchange="loadLegsLogForDate()"></div>
+      <div id="legs-exercise-inputs"></div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="saveLegsLog()">Save Leg Workout</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Warm-up reminder</div>
+      <p style="font-size:13px;color:var(--text-dim)">5 min: leg swings, high knees, bodyweight squats. Rest 90-120s between explosive sets.</p>
+    </div>
+    <div class="card"><div class="card-title">Session History</div><div id="legs-history-list"></div></div>
   </div>
 </div>
 
@@ -710,7 +725,7 @@ function showPage(page){
   if(navBtn)navBtn.classList.add('active');
   document.getElementById('app').scrollTop=0;
   if(page==='prep'){
-    if(currentRoutine==='chest'){renderChestInputs();loadChestLogForDate();renderChestHistory()}
+    if(currentRoutine==='upper'||currentRoutine==='legs'){renderPrescribedInputs(currentRoutine);loadPrescribedLogForDate(currentRoutine);renderPrescribedHistory(currentRoutine)}
     else renderBlackbelt();
   }
   else if(page==='meals'){document.getElementById('meal-date').value=todayStr();renderMealList()}
@@ -833,7 +848,8 @@ function loadLogForDate(){
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('log-date').addEventListener('change',loadLogForDate);
   document.getElementById('meal-date').addEventListener('change',renderMealList);
-  document.getElementById('chest-log-date').addEventListener('change',loadChestLogForDate);
+  document.getElementById('upper-log-date').addEventListener('change',loadUpperLogForDate);
+  document.getElementById('legs-log-date').addEventListener('change',loadLegsLogForDate);
   document.getElementById('meal-food').addEventListener('input',function(){
     const est=estimateCalories(this.value);const hint=document.getElementById('cal-estimate-hint');
     if(est>0&&!document.getElementById('meal-cals').value){hint.textContent=`Estimated: ~${est} cal`;hint.style.display='block'}else{hint.style.display='none'}
@@ -1070,17 +1086,17 @@ function renderWeightStats(){const logs=getDailyLogs(),s=getSettings(),lw=getLat
   const lost=lw?s.startWeight-lw:0;document.getElementById('prog-total-lost').textContent=lost>0?lost.toFixed(1):'0';
   document.getElementById('prog-weight-bar').style.width=Math.min(100,Math.max(0,(lost/(s.startWeight-s.goalWeight))*100))+'%'}
 function getDailyPushups(){
-  const bb=getBBLogs(),cl=getChestLogs(),allDates=new Set([...Object.keys(bb),...Object.keys(cl)]);
+  const bb=getBBLogs(),ul=getRoutineLogs('upper'),allDates=new Set([...Object.keys(bb),...Object.keys(ul)]);
   const result={};
   allDates.forEach(d=>{
-    let bbPushups=0,chestPushups=0;
+    let bbPushups=0,upperPushups=0;
     if(bb[d]&&bb[d].pushups) bbPushups=getTotalReps(bb[d].pushups);
-    if(cl[d]){
-      CHEST_EXERCISES.forEach(ex=>{
-        if(cl[d][ex.key]) chestPushups+=cl[d][ex.key].filter(v=>v).reduce((s,v)=>s+v,0);
+    if(ul[d]){
+      UPPER_EXERCISES.filter(ex=>ex.pushup).forEach(ex=>{
+        if(ul[d][ex.key]) upperPushups+=ul[d][ex.key].filter(v=>v).reduce((s,v)=>s+v,0);
       });
     }
-    result[d]={bb:bbPushups,chest:chestPushups,total:bbPushups+chestPushups};
+    result[d]={bb:bbPushups,chest:upperPushups,total:bbPushups+upperPushups};
   });
   return result;
 }
@@ -1094,7 +1110,7 @@ function renderPushupChart(){
   drawLineChart('pushup-chart',[
     {points:totalPts,color:cs.getPropertyValue('--accent').trim(),label:'Total'},
     {points:bbPts,color:cs.getPropertyValue('--green').trim(),label:'Blackbelt'},
-    {points:chestPts,color:cs.getPropertyValue('--red').trim(),label:'Chest'}
+    {points:chestPts,color:cs.getPropertyValue('--red').trim(),label:'Upper'}
   ],{multiLine:true,minY:0,maxY:maxV+20,goalLine:100,xLabels});
   // Stats
   const today=todayStr(),td=data[today];
@@ -1118,7 +1134,7 @@ function renderPushupChart(){
       <span style="font-size:13px;color:var(--text-dim)">${dl}</span>
       <div style="display:flex;gap:10px;align-items:center;font-size:13px">
         <span style="color:var(--green)">${r.bb>0?'BB:'+r.bb:''}</span>
-        <span style="color:var(--red)">${r.chest>0?'Chest:'+r.chest:''}</span>
+        <span style="color:var(--red)">${r.chest>0?'Upper:'+r.chest:''}</span>
         <span style="font-weight:700;color:${pct100?'var(--green)':'var(--text)'}">${r.total}${pct100?' ✓':''}</span>
       </div>
     </div>`}).join('');
@@ -1145,145 +1161,149 @@ function renderReadinessRings(){document.getElementById('readiness-rings').inner
   return`<div class="ring-container"><svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--border)" stroke-width="4"/><circle cx="30" cy="30" r="${r}" fill="none" stroke="${color}" stroke-width="4" stroke-dasharray="${circ}" stroke-dashoffset="${off}" transform="rotate(-90 30 30)" stroke-linecap="round"/><text x="30" y="33" text-anchor="middle" fill="${color}" font-size="11" font-weight="700">${Math.round(pct)}%</text></svg><div class="ring-label">${ex.icon} ${best}${u}/${goal}${u}</div></div>`}).join('')}
 
 // ═══════════════════════════════════════════════════════════
-//  CHEST DEVELOPMENT ROUTINE
+//  PRESCRIBED ROUTINES (Upper Body + Legs)
 // ═══════════════════════════════════════════════════════════
-const CHEST_EXERCISES=[
-  {key:'pikePushUp',name:'Pike Push-Up',icon:'🔺',sets:3,reps:10,note:'Upper chest & delts'},
-  {key:'wideGripPushUp',name:'Wide Grip',icon:'🦅',sets:4,reps:15,note:'Outer & mid chest'},
-  {key:'standardPushUp',name:'Standard',icon:'💪',sets:4,reps:20,note:'Full chest baseline'},
-  {key:'diamondPushUp',name:'Diamond',icon:'💎',sets:4,reps:12,note:'Inner chest & triceps'},
-  {key:'declinePushUp',name:'Decline',icon:'⬆️',sets:4,reps:12,note:'Upper chest (feet up)'},
-  {key:'archerPushUp',name:'Archer',icon:'🏹',sets:3,reps:8,note:'Lateral (each side)'},
-  {key:'slowNegPushUp',name:'Slow Negative',icon:'🐢',sets:3,reps:8,note:'4-sec descent'}
+const UPPER_EXERCISES=[
+  // Chest
+  {key:'pikePushUp',name:'Pike Push-Up',icon:'🔺',sets:3,reps:10,note:'Upper chest & delts',pushup:true},
+  {key:'wideGripPushUp',name:'Wide Grip',icon:'🦅',sets:4,reps:15,note:'Outer & mid chest',pushup:true},
+  {key:'standardPushUp',name:'Standard',icon:'💪',sets:4,reps:20,note:'Full chest baseline',pushup:true},
+  {key:'diamondPushUp',name:'Diamond',icon:'💎',sets:4,reps:12,note:'Inner chest & triceps',pushup:true},
+  {key:'declinePushUp',name:'Decline',icon:'⬆️',sets:4,reps:12,note:'Upper chest (feet up)',pushup:true},
+  {key:'archerPushUp',name:'Archer',icon:'🏹',sets:3,reps:8,note:'Lateral (each side)',pushup:true},
+  {key:'slowNegPushUp',name:'Slow Negative',icon:'🐢',sets:3,reps:8,note:'4-sec descent',pushup:true},
+  // Arms
+  {key:'tricepDip',name:'Tricep Dip',icon:'🪑',sets:3,reps:12,note:'Chair/bench dips'},
+  {key:'overheadTricep',name:'Overhead Ext.',icon:'🔨',sets:3,reps:12,note:'Dumbbell behind head'},
+  {key:'hammerCurl',name:'Hammer Curl',icon:'🤜',sets:3,reps:12,note:'Dumbbell or band'},
+  {key:'bicepCurl',name:'Bicep Curl',icon:'💪',sets:3,reps:12,note:'Dumbbell or band'},
+  {key:'bandPullApart',name:'Band Pull-Apart',icon:'🎯',sets:3,reps:15,note:'Rear delts & posture'}
 ];
-let currentChestSets={};
+
+const LEGS_EXERCISES=[
+  {key:'jumpSquat',name:'Jump Squat',icon:'🦘',sets:4,reps:12,note:'Explosive quad power'},
+  {key:'splitJump',name:'Split Jump Lunge',icon:'⚡',sets:3,reps:10,note:'Each side, alternating'},
+  {key:'boxJump',name:'Box Jump',icon:'📦',sets:4,reps:8,note:'Sturdy chair/step 16-20"'},
+  {key:'lateralBound',name:'Lateral Bound',icon:'↔️',sets:3,reps:10,note:'Each side, stick landing'},
+  {key:'singleLegDeadlift',name:'1-Leg Deadlift',icon:'🦩',sets:3,reps:10,note:'Dumbbell, each side'},
+  {key:'calfRaiseExplode',name:'Explosive Calf Raise',icon:'🔥',sets:4,reps:15,note:'Fast up, slow down'},
+  {key:'wallSit',name:'Wall Sit',icon:'🧱',sets:3,reps:45,note:'Seconds hold'},
+  {key:'skaterJump',name:'Skater Jump',icon:'⛸️',sets:3,reps:12,note:'Each side, lateral power'}
+];
+
+const ROUTINES={
+  upper:{exercises:UPPER_EXERCISES,logKey:'upperLogs',progKey:'upperProgression',label:'Upper Body',syncType:'upper',workoutTag:'upper-body',dateId:'upper-log-date',dateLabelId:'upper-log-date-label',inputsId:'upper-exercise-inputs',historyId:'upper-history-list'},
+  legs:{exercises:LEGS_EXERCISES,logKey:'legsLogs',progKey:'legsProgression',label:'Legs',syncType:'legs',workoutTag:'legs',dateId:'legs-log-date',dateLabelId:'legs-log-date-label',inputsId:'legs-exercise-inputs',historyId:'legs-history-list'}
+};
+let currentPrescribedSets={};
 let currentRoutine='blackbelt';
 
-function getChestLogs(){return load('chestLogs',{})}
-function getChestProgression(){return load('chestProgression',{cleanSessions:0,level:1})}
-function saveChestProgression(p){save('chestProgression',p)}
+function getRoutineLogs(r){return load(ROUTINES[r].logKey,{})}
+function getRoutineProgression(r){return load(ROUTINES[r].progKey,{cleanSessions:0})}
+function saveRoutineProgression(r,p){save(ROUTINES[r].progKey,p)}
 
 function switchRoutine(r){
   currentRoutine=r;
-  document.querySelectorAll('#routine-switcher .tab-btn').forEach((b,i)=>b.classList.toggle('active',['blackbelt','chest'][i]===r));
-  document.getElementById('routine-blackbelt').style.display=r==='blackbelt'?'block':'none';
-  document.getElementById('routine-chest').style.display=r==='chest'?'block':'none';
-  if(r==='chest'){
-    document.getElementById('chest-log-date').value=todayStr();
-    document.getElementById('chest-log-date-label').textContent=new Date(todayStr()+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-    renderChestInputs();loadChestLogForDate();renderChestHistory();
+  const tabs=['blackbelt','upper','legs'];
+  document.querySelectorAll('#routine-switcher .tab-btn').forEach((b,i)=>b.classList.toggle('active',tabs[i]===r));
+  tabs.forEach(t=>document.getElementById('routine-'+t).style.display=t===r?'block':'none');
+  if(r==='upper'||r==='legs'){
+    const rt=ROUTINES[r];
+    document.getElementById(rt.dateId).value=todayStr();
+    document.getElementById(rt.dateLabelId).textContent=new Date(todayStr()+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    renderPrescribedInputs(r);loadPrescribedLogForDate(r);renderPrescribedHistory(r);
   }
 }
 
-function renderChestInputs(){
-  const c=document.getElementById('chest-exercise-inputs');
-  const prog=getChestProgression();
-  c.innerHTML=CHEST_EXERCISES.map(ex=>{
-    const sets=ex.sets,reps=ex.reps;
-    const slotsHtml=Array.from({length:sets},(_, i)=>`<div class="set-slot" id="cslot-${ex.key}-${i}" onclick="toggleChestSet('${ex.key}',${i},${reps})">${reps}</div>`).join('');
+function renderPrescribedInputs(r){
+  const rt=ROUTINES[r],c=document.getElementById(rt.inputsId);
+  c.innerHTML=rt.exercises.map(ex=>{
+    const slotsHtml=Array.from({length:ex.sets},(_,i)=>`<div class="set-slot" id="pslot-${r}-${ex.key}-${i}" onclick="togglePrescribedSet('${r}','${ex.key}',${i},${ex.reps})">${ex.reps}</div>`).join('');
     return`<div class="prescribed-row">
       <div class="prescribed-header">
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:14px">${ex.icon}</span>
           <span class="exercise-name">${ex.name}</span>
         </div>
-        <span class="prescribed-target">${sets} × ${reps}</span>
+        <span class="prescribed-target">${ex.sets} × ${ex.reps}</span>
       </div>
       <div style="font-size:11px;color:var(--text-dim);margin-bottom:2px">${ex.note}</div>
-      <div class="prescribed-sets" id="csets-${ex.key}">
+      <div class="prescribed-sets" id="psets-${r}-${ex.key}">
         ${slotsHtml}
-        <span class="prescribed-complete" id="cdone-${ex.key}"></span>
+        <span class="prescribed-complete" id="pdone-${r}-${ex.key}"></span>
       </div>
     </div>`;
   }).join('');
 }
 
-function toggleChestSet(key,idx,targetReps){
-  if(!currentChestSets[key])currentChestSets[key]=[];
-  if(currentChestSets[key][idx]){
-    currentChestSets[key][idx]=null;
-  }else{
-    currentChestSets[key][idx]=targetReps;
-  }
-  renderChestSlots(key);
+function togglePrescribedSet(r,key,idx,targetReps){
+  const sk=r+'-'+key;
+  if(!currentPrescribedSets[sk])currentPrescribedSets[sk]=[];
+  currentPrescribedSets[sk][idx]=currentPrescribedSets[sk][idx]?null:targetReps;
+  renderPrescribedSlots(r,key);
 }
 
-function renderChestSlots(key){
-  const ex=CHEST_EXERCISES.find(e=>e.key===key);
-  const sets=currentChestSets[key]||[];
+function renderPrescribedSlots(r,key){
+  const rt=ROUTINES[r],ex=rt.exercises.find(e=>e.key===key),sk=r+'-'+key,sets=currentPrescribedSets[sk]||[];
   let done=0;
   for(let i=0;i<ex.sets;i++){
-    const slot=document.getElementById('cslot-'+key+'-'+i);
+    const slot=document.getElementById('pslot-'+r+'-'+key+'-'+i);
     if(!slot)continue;
-    if(sets[i]){
-      slot.className='set-slot'+(sets[i]>=ex.reps?' done':' partial');
-      slot.textContent=sets[i];
-      done++;
-    }else{
-      slot.className='set-slot';
-      slot.textContent=ex.reps;
-    }
+    if(sets[i]){slot.className='set-slot'+(sets[i]>=ex.reps?' done':' partial');slot.textContent=sets[i];done++}
+    else{slot.className='set-slot';slot.textContent=ex.reps}
   }
-  const doneEl=document.getElementById('cdone-'+key);
+  const doneEl=document.getElementById('pdone-'+r+'-'+key);
   if(doneEl)doneEl.textContent=done===ex.sets?'✓':'';
 }
 
-function loadChestLogForDate(){
-  const date=document.getElementById('chest-log-date').value,logs=getChestLogs(),log=logs[date];
-  document.getElementById('chest-log-date-label').textContent=new Date(date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  currentChestSets={};
-  CHEST_EXERCISES.forEach(ex=>{
-    if(log&&log[ex.key]){
-      currentChestSets[ex.key]=[...log[ex.key]];
-    }
-    renderChestSlots(ex.key);
+function loadPrescribedLogForDate(r){
+  const rt=ROUTINES[r],date=document.getElementById(rt.dateId).value,logs=getRoutineLogs(r),log=logs[date];
+  document.getElementById(rt.dateLabelId).textContent=new Date(date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  rt.exercises.forEach(ex=>{
+    const sk=r+'-'+ex.key;
+    currentPrescribedSets[sk]=(log&&log[ex.key])?[...log[ex.key]]:[];
+    renderPrescribedSlots(r,ex.key);
   });
 }
+function loadUpperLogForDate(){loadPrescribedLogForDate('upper')}
+function loadLegsLogForDate(){loadPrescribedLogForDate('legs')}
 
-function saveChestLog(){
-  const date=document.getElementById('chest-log-date').value;if(!date)return;
-  const logs=getChestLogs(),entry={ts:Date.now()};let hasData=false;
-  let allComplete=true;
-  CHEST_EXERCISES.forEach(ex=>{
-    const sets=currentChestSets[ex.key];
+function savePrescribedLog(r){
+  const rt=ROUTINES[r],date=document.getElementById(rt.dateId).value;if(!date)return;
+  const logs=getRoutineLogs(r),entry={ts:Date.now()};let hasData=false,allComplete=true;
+  rt.exercises.forEach(ex=>{
+    const sk=r+'-'+ex.key,sets=currentPrescribedSets[sk];
     if(sets&&sets.some(s=>s)){entry[ex.key]=[...sets];hasData=true}
     const done=(sets||[]).filter(s=>s&&s>=ex.reps).length;
     if(done<ex.sets)allComplete=false;
   });
   if(!hasData){toast('Tap sets to log them');return}
-  logs[date]=entry;save('chestLogs',logs);
-  // Track progression
-  const prog=getChestProgression();
+  logs[date]=entry;save(rt.logKey,logs);
+  const prog=getRoutineProgression(r);
   if(allComplete){
-    prog.cleanSessions=(prog.cleanSessions||0)+1;
-    saveChestProgression(prog);
-    if(prog.cleanSessions>=3&&prog.cleanSessions%3===0){
-      toast('🔥 '+prog.cleanSessions+' clean sessions! Consider adding a set or increasing reps.');
-    }else{
-      toast('Chest workout saved ✓ — all sets complete!');
-    }
-  }else{
-    toast('Chest workout saved ✓');
-  }
-  // Sync to sheet
-  syncToSheet('chest',{date,exercises:entry});
-  // Update daily log
+    prog.cleanSessions=(prog.cleanSessions||0)+1;saveRoutineProgression(r,prog);
+    if(prog.cleanSessions>=3&&prog.cleanSessions%3===0)toast('🔥 '+prog.cleanSessions+' clean sessions! Consider increasing difficulty.');
+    else toast(rt.label+' saved ✓ — all sets complete!');
+  }else{toast(rt.label+' saved ✓')}
+  syncToSheet(rt.syncType,{date,exercises:entry});
   const dl=getDailyLogs();if(!dl[date])dl[date]={workouts:[],ts:Date.now()};if(!dl[date].workouts)dl[date].workouts=[];
-  if(!dl[date].workouts.includes('chest-dev')){dl[date].workouts.push('chest-dev');save('dailyLogs',dl)}
-  updateStatusBar();renderChestHistory();
+  if(!dl[date].workouts.includes(rt.workoutTag)){dl[date].workouts.push(rt.workoutTag);save('dailyLogs',dl)}
+  updateStatusBar();renderPrescribedHistory(r);
 }
+function saveUpperLog(){savePrescribedLog('upper')}
+function saveLegsLog(){savePrescribedLog('legs')}
 
-function renderChestHistory(){
-  const logs=getChestLogs(),dates=Object.keys(logs).sort().reverse().slice(0,15),c=document.getElementById('chest-history-list');
-  if(!dates.length){c.innerHTML='<p style="color:var(--text-dim);font-size:13px">No chest workouts yet.</p>';return}
+function renderPrescribedHistory(r){
+  const rt=ROUTINES[r],logs=getRoutineLogs(r),dates=Object.keys(logs).sort().reverse().slice(0,15),c=document.getElementById(rt.historyId);
+  if(!dates.length){c.innerHTML='<p style="color:var(--text-dim);font-size:13px">No '+rt.label.toLowerCase()+' workouts yet.</p>';return}
   c.innerHTML=dates.map(d=>{
     const log=logs[d],dl=new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',weekday:'short'});
-    const summary=CHEST_EXERCISES.filter(ex=>log[ex.key]&&log[ex.key].some(s=>s)).map(ex=>{
+    const summary=rt.exercises.filter(ex=>log[ex.key]&&log[ex.key].some(s=>s)).map(ex=>{
       const done=(log[ex.key]||[]).filter(s=>s).length;
       return`${ex.icon}${done}/${ex.sets}`;
     }).join('  ');
-    const allDone=CHEST_EXERCISES.every(ex=>{const s=log[ex.key]||[];return s.filter(v=>v&&v>=ex.reps).length>=ex.sets});
-    return`<div class="history-item" onclick="document.getElementById('chest-log-date').value='${d}';loadChestLogForDate()"><div><div class="history-detail">${dl}${allDone?' <span style="color:var(--green)">✓</span>':''}</div><div class="history-date">${summary}</div></div></div>`
+    const allDone=rt.exercises.every(ex=>{const s=log[ex.key]||[];return s.filter(v=>v&&v>=ex.reps).length>=ex.sets});
+    return`<div class="history-item" onclick="document.getElementById('${rt.dateId}').value='${d}';loadPrescribedLogForDate('${r}')"><div><div class="history-detail">${dl}${allDone?' <span style="color:var(--green)">✓</span>':''}</div><div class="history-date">${summary}</div></div></div>`
   }).join('');
 }
 

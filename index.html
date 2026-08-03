@@ -25,6 +25,7 @@
 html,body{height:100%;overflow:hidden}
 body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;flex-direction:column}
 #app{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 16px 40px;-webkit-overflow-scrolling:touch}
+#app.timer-active{padding-bottom:100px}
 .page{display:none}.page.active{display:block;animation:pageFadeIn .15s ease}
 @keyframes pageFadeIn{from{opacity:0}to{opacity:1}}
 nav{display:none}
@@ -131,6 +132,20 @@ textarea{resize:vertical;min-height:60px}
 .set-slot.partial{border-style:solid;border-color:var(--orange);background:var(--orange-glow);color:var(--orange)}
 .prescribed-complete{font-size:11px;font-weight:700;color:var(--green);margin-left:4px}
 .progression-banner{background:var(--accent-glow);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:13px;color:var(--accent);display:flex;align-items:center;gap:8px}
+.rest-timer{position:fixed;bottom:0;left:0;right:0;background:var(--surface2);border-top:1px solid var(--border);padding:8px 16px;z-index:100;display:none}
+.rest-timer.visible{display:block}
+.timer-row{display:flex;align-items:center;justify-content:space-between}
+.timer-time{font-size:22px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.timer-time.alert{color:var(--green);animation:timerPulse .5s ease 3}
+@keyframes timerPulse{0%,100%{opacity:1}50%{opacity:.4}}
+.timer-label{font-size:11px;color:var(--text-dim)}
+.timer-btns{display:flex;gap:6px}
+.timer-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer}
+.timer-btn.go{border-color:var(--green);color:var(--green)}
+.timer-btn.stop{border-color:var(--red);color:var(--red)}
+.timer-presets{display:flex;gap:6px;margin-top:6px}
+.timer-preset{padding:4px 10px;border-radius:14px;background:var(--surface);border:1px solid var(--border);font-size:11px;color:var(--text-dim);cursor:pointer}
+.timer-preset.active{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
 </style>
 </head>
 <body>
@@ -364,6 +379,16 @@ textarea{resize:vertical;min-height:60px}
   </div>
   <div class="card"><div class="card-title">Training Baseline</div><p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">Set your starting max reps. The plan scales from here to 200.</p><div id="baseline-inputs"></div><button class="btn btn-primary" onclick="saveBaselines()">Save Baselines</button></div>
   <div class="card">
+    <div class="card-title">Rest Timer Presets</div>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">Set three countdown presets for the rest timer (in seconds).</p>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div class="form-group" style="flex:1;margin:0"><label class="form-label">Preset 1</label><input type="number" id="set-timer-1" inputmode="numeric" min="5" max="600"></div>
+      <div class="form-group" style="flex:1;margin:0"><label class="form-label">Preset 2</label><input type="number" id="set-timer-2" inputmode="numeric" min="5" max="600"></div>
+      <div class="form-group" style="flex:1;margin:0"><label class="form-label">Preset 3</label><input type="number" id="set-timer-3" inputmode="numeric" min="5" max="600"></div>
+    </div>
+    <button class="btn btn-primary" onclick="saveTimerPresets()">Save Presets</button>
+  </div>
+  <div class="card">
     <div class="card-title">Google Sheets Sync</div>
     <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">Connect to Google Sheets for backup and push notifications.</p>
     <div class="form-group"><label class="form-label">Apps Script URL</label><input type="url" id="set-sync-url" value="https://script.google.com/macros/s/AKfycbx_FaFrq76SnLlx63zppuAAPCR0D4fkke0fABuVJR2OLg7GaHCsquT19Tv4vTbDrZwS/exec"></div>
@@ -417,6 +442,20 @@ textarea{resize:vertical;min-height:60px}
 <nav></nav>
 
 <div class="modal-overlay" id="confirm-modal"><div class="modal-content"><div class="modal-title" id="confirm-title">Are you sure?</div><p style="color:var(--text-dim);margin-bottom:20px" id="confirm-msg"></p><div style="display:flex;gap:8px"><button class="btn btn-secondary" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn btn-danger" style="flex:1" id="confirm-action">Delete</button></div></div></div>
+
+<div class="rest-timer" id="rest-timer">
+  <div class="timer-row">
+    <div>
+      <div class="timer-time" id="timer-display">0:00</div>
+      <div class="timer-label" id="timer-mode-label">Rest timer</div>
+    </div>
+    <div class="timer-btns">
+      <button class="timer-btn go" id="timer-toggle" onclick="toggleTimer()">&#9654;</button>
+      <button class="timer-btn" onclick="resetTimer()">&#8635;</button>
+    </div>
+  </div>
+  <div class="timer-presets" id="timer-presets"></div>
+</div>
 
 <script>
 // ═══════════════════════════════════════════════════════════
@@ -725,16 +764,18 @@ function showPage(page){
   if(navBtn)navBtn.classList.add('active');
   document.getElementById('app').scrollTop=0;
   if(page==='prep'){
-    if(currentRoutine==='upper'||currentRoutine==='legs'){renderPrescribedInputs(currentRoutine);loadPrescribedLogForDate(currentRoutine);renderPrescribedHistory(currentRoutine)}
-    else renderBlackbelt();
+    if(currentRoutine==='upper'||currentRoutine==='legs'){renderPrescribedInputs(currentRoutine);loadPrescribedLogForDate(currentRoutine);renderPrescribedHistory(currentRoutine);showRestTimer(true)}
+    else{renderBlackbelt();showRestTimer(false)}
+  }else{
+    showRestTimer(false);
+    if(page==='meals'){document.getElementById('meal-date').value=todayStr();renderMealList()}
+    else if(page==='weight')initWeight();
+    else if(page==='overview')renderToday();
+    else if(page==='progress')renderProgress();
+    else if(page==='medals')renderMedals();
+    else if(page==='history')renderBBHistory();
+    else if(page==='settings')initSettings();
   }
-  else if(page==='meals'){document.getElementById('meal-date').value=todayStr();renderMealList()}
-  else if(page==='weight')initWeight();
-  else if(page==='overview')renderToday();
-  else if(page==='progress')renderProgress();
-  else if(page==='medals')renderMedals();
-  else if(page==='history')renderBBHistory();
-  else if(page==='settings')initSettings();
   updateStatusBar();
 }
 function toggleMenu(){document.getElementById('menu-overlay').classList.toggle('show')}
@@ -1212,6 +1253,9 @@ function switchRoutine(r){
     document.getElementById(rt.dateId).value=todayStr();
     document.getElementById(rt.dateLabelId).textContent=new Date(todayStr()+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
     renderPrescribedInputs(r);loadPrescribedLogForDate(r);renderPrescribedHistory(r);
+    showRestTimer(true);
+  }else{
+    showRestTimer(false);
   }
 }
 
@@ -1219,16 +1263,12 @@ function renderPrescribedInputs(r){
   const rt=ROUTINES[r],c=document.getElementById(rt.inputsId);
   c.innerHTML=rt.exercises.map(ex=>{
     const slotsHtml=Array.from({length:ex.sets},(_,i)=>`<div class="set-slot" id="pslot-${r}-${ex.key}-${i}" onclick="togglePrescribedSet('${r}','${ex.key}',${i},${ex.reps})">${ex.reps}</div>`).join('');
-    return`<div class="prescribed-row">
-      <div class="prescribed-header">
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:14px">${ex.icon}</span>
-          <span class="exercise-name">${ex.name}</span>
-        </div>
-        <span class="prescribed-target">${ex.sets} × ${ex.reps}</span>
+    return`<div class="prescribed-row" style="display:flex;align-items:center;padding:7px 0">
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;min-width:100px">
+        <span style="font-size:14px">${ex.icon}</span>
+        <span class="exercise-name">${ex.name}</span>
       </div>
-      <div style="font-size:11px;color:var(--text-dim);margin-bottom:2px">${ex.note}</div>
-      <div class="prescribed-sets" id="psets-${r}-${ex.key}">
+      <div class="prescribed-sets" id="psets-${r}-${ex.key}" style="display:flex;gap:4px;align-items:center;flex:1;justify-content:flex-end">
         ${slotsHtml}
         <span class="prescribed-complete" id="pdone-${r}-${ex.key}"></span>
       </div>
@@ -1308,6 +1348,95 @@ function renderPrescribedHistory(r){
 }
 
 // ═══════════════════════════════════════════════════════════
+//  REST TIMER
+// ═══════════════════════════════════════════════════════════
+let timerInterval=null,timerSeconds=0,timerCountdown=0,timerRunning=false;
+
+function getTimerPresets(){return load('timerPresets',[60,90,120])}
+
+function showRestTimer(show){
+  const el=document.getElementById('rest-timer'),app=document.getElementById('app');
+  if(show){el.classList.add('visible');app.classList.add('timer-active');renderTimerPresets()}
+  else{el.classList.remove('visible');app.classList.remove('timer-active');stopTimerInterval()}
+}
+
+function renderTimerPresets(){
+  const presets=getTimerPresets(),c=document.getElementById('timer-presets');
+  c.innerHTML=presets.map((p,i)=>`<div class="timer-preset" id="tpreset-${i}" onclick="setTimerPreset(${p},${i})">${p}s</div>`).join('')+
+    `<div class="timer-preset" onclick="clearTimerPreset()">&#9650;</div>`;
+}
+
+function setTimerPreset(secs,idx){
+  stopTimerInterval();
+  timerCountdown=secs;timerSeconds=secs;timerRunning=false;
+  document.querySelectorAll('.timer-preset').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tpreset-'+idx).classList.add('active');
+  document.getElementById('timer-mode-label').textContent='Countdown '+secs+'s';
+  updateTimerDisplay();
+  const btn=document.getElementById('timer-toggle');
+  btn.innerHTML='&#9654;';btn.className='timer-btn go';
+}
+
+function clearTimerPreset(){
+  stopTimerInterval();
+  timerCountdown=0;timerSeconds=0;timerRunning=false;
+  document.querySelectorAll('.timer-preset').forEach(p=>p.classList.remove('active'));
+  document.getElementById('timer-mode-label').textContent='Stopwatch';
+  updateTimerDisplay();
+  const btn=document.getElementById('timer-toggle');
+  btn.innerHTML='&#9654;';btn.className='timer-btn go';
+}
+
+function toggleTimer(){
+  if(timerRunning){pauseTimer()}else{startTimer()}
+}
+
+function startTimer(){
+  timerRunning=true;
+  const btn=document.getElementById('timer-toggle');
+  btn.innerHTML='&#9646;&#9646;';btn.className='timer-btn stop';
+  document.getElementById('timer-display').classList.remove('alert');
+  timerInterval=setInterval(()=>{
+    if(timerCountdown>0){
+      timerSeconds--;
+      if(timerSeconds<=0){
+        timerSeconds=0;stopTimerInterval();timerRunning=false;
+        btn.innerHTML='&#9654;';btn.className='timer-btn go';
+        document.getElementById('timer-display').classList.add('alert');
+        document.getElementById('timer-mode-label').textContent='Time! Start next set';
+        if(navigator.vibrate)navigator.vibrate([200,100,200,100,200]);
+      }
+    }else{
+      timerSeconds++;
+    }
+    updateTimerDisplay();
+  },1000);
+}
+
+function pauseTimer(){
+  timerRunning=false;stopTimerInterval();
+  const btn=document.getElementById('timer-toggle');
+  btn.innerHTML='&#9654;';btn.className='timer-btn go';
+}
+
+function resetTimer(){
+  stopTimerInterval();timerRunning=false;
+  timerSeconds=timerCountdown>0?timerCountdown:0;
+  document.getElementById('timer-display').classList.remove('alert');
+  document.getElementById('timer-mode-label').textContent=timerCountdown>0?'Countdown '+timerCountdown+'s':'Rest timer';
+  updateTimerDisplay();
+  const btn=document.getElementById('timer-toggle');
+  btn.innerHTML='&#9654;';btn.className='timer-btn go';
+}
+
+function stopTimerInterval(){if(timerInterval){clearInterval(timerInterval);timerInterval=null}}
+
+function updateTimerDisplay(){
+  const m=Math.floor(timerSeconds/60),s=timerSeconds%60;
+  document.getElementById('timer-display').textContent=m+':'+(s<10?'0':'')+s;
+}
+
+// ═══════════════════════════════════════════════════════════
 //  SETTINGS
 // ═══════════════════════════════════════════════════════════
 function initSettings(){
@@ -1320,7 +1449,15 @@ function initSettings(){
   document.getElementById('sync-status').textContent=load('lastSyncMsg','')||'';
   document.getElementById('baseline-inputs').innerHTML=EXERCISES.map(ex=>{const u=ex.key==='plankSec'?'seconds':'reps';
     return`<div class="exercise-row"><span>${ex.icon}</span><span class="exercise-name">${ex.name} <span style="font-size:11px;color:var(--text-dim)">(${u})</span></span><input type="number" class="exercise-input" id="baseline-${ex.key}" value="${getBaselines()[ex.key]}" inputmode="numeric" min="0"></div>`}).join('');
+  const tp=getTimerPresets();
+  document.getElementById('set-timer-1').value=tp[0];
+  document.getElementById('set-timer-2').value=tp[1];
+  document.getElementById('set-timer-3').value=tp[2];
   initThemeInputs();
+}
+function saveTimerPresets(){
+  const p=[parseInt(document.getElementById('set-timer-1').value)||60,parseInt(document.getElementById('set-timer-2').value)||90,parseInt(document.getElementById('set-timer-3').value)||120];
+  save('timerPresets',p);toast('Timer presets saved ✓');renderTimerPresets();
 }
 function saveSettings(){save('settings',{startWeight:parseFloat(document.getElementById('set-start-weight').value)||210,goalWeight:parseFloat(document.getElementById('set-goal-weight').value)||185,testDate:document.getElementById('set-test-date').value||'2026-12-05',sessionsPerWeek:parseInt(document.getElementById('set-sessions-week').value)||3,calTarget:parseInt(document.getElementById('set-cal-target').value)||2000});toast('Goals saved ✓')}
 function saveBaselines(){const b={};EXERCISES.forEach(ex=>{b[ex.key]=parseInt(document.getElementById('baseline-'+ex.key).value)||20});save('baselines',b);toast('Baselines saved ✓')}

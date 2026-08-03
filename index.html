@@ -349,8 +349,21 @@ textarea{resize:vertical;min-height:60px}
     <div class="grid-2"><div class="card" style="text-align:center"><div class="card-title">Clean Nights</div><div style="font-size:28px;font-weight:800;color:var(--green)" id="clean-nights-count">0</div><div class="metric-sub" id="clean-nights-pct">of last 30 days</div></div><div class="card" style="text-align:center"><div class="card-title">Best Streak</div><div style="font-size:28px;font-weight:800;color:var(--accent)" id="best-clean-streak">0</div><div class="metric-sub">days in a row</div></div></div>
   </div>
   <div id="progress-tab-fitness" style="display:none">
-    <div class="card"><div class="card-title">Exercise Progression</div><canvas class="mini-chart" id="fitness-chart" style="height:260px"></canvas></div>
-    <div class="card"><div class="card-title">Readiness for Test Day</div><div id="readiness-rings" style="display:flex;flex-wrap:wrap;justify-content:center;gap:16px;padding:8px 0"></div></div>
+    <div class="card"><div class="card-title">Total Training Volume</div><canvas class="mini-chart" id="volume-chart" style="height:220px"></canvas></div>
+    <div class="grid-2">
+      <div class="card" style="text-align:center"><div class="card-title">7-Day Volume</div><div style="font-size:28px;font-weight:800;color:var(--accent)" id="vol-7d-total">0</div><div class="metric-sub">total reps</div></div>
+      <div class="card" style="text-align:center"><div class="card-title">Sessions (7d)</div><div style="font-size:28px;font-weight:800;color:var(--green)" id="vol-7d-sessions">0</div><div class="metric-sub">workouts</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Exercise Detail</div>
+      <div class="tab-bar" id="fitness-routine-switcher">
+        <button class="tab-btn active" onclick="switchFitnessRoutine('blackbelt')">Blackbelt</button>
+        <button class="tab-btn" onclick="switchFitnessRoutine('upper')">Upper</button>
+        <button class="tab-btn" onclick="switchFitnessRoutine('legs')">Legs</button>
+      </div>
+      <canvas class="mini-chart" id="fitness-chart" style="height:260px"></canvas>
+    </div>
+    <div class="card"><div class="card-title">Blackbelt Readiness</div><div id="readiness-rings" style="display:flex;flex-wrap:wrap;justify-content:center;gap:16px;padding:8px 0"></div></div>
   </div>
 </div>
 
@@ -1072,7 +1085,7 @@ function renderBBHistory(){
 // ═══════════════════════════════════════════════════════════
 //  PROGRESS PAGE
 // ═══════════════════════════════════════════════════════════
-function renderProgress(){renderWeightChart();renderWeightStats();renderPushupChart();renderHabitsChart();renderHabitsStats();renderFitnessChart();renderReadinessRings()}
+function renderProgress(){renderWeightChart();renderWeightStats();renderPushupChart();renderHabitsChart();renderHabitsStats();renderVolumeChart();renderFitnessChart();renderReadinessRings()}
 function switchProgressTab(tab){
   const tabs=['weight','pushups','habits','fitness'];
   document.querySelectorAll('#page-progress .tab-btn').forEach((b,i)=>b.classList.toggle('active',tabs[i]===tab));
@@ -1081,7 +1094,7 @@ function switchProgressTab(tab){
     if(tab==='weight')renderWeightChart();
     if(tab==='pushups')renderPushupChart();
     if(tab==='habits')renderHabitsChart();
-    if(tab==='fitness'){renderFitnessChart();renderReadinessRings()}
+    if(tab==='fitness'){renderVolumeChart();renderFitnessChart();renderReadinessRings()}
   },50);
 }
 function drawLineChart(cid,data,opt={}){
@@ -1189,14 +1202,63 @@ function renderHabitsChart(){const logs=getDailyLogs(),dates=[],d=toEST(new Date
 function renderHabitsStats(){const logs=getDailyLogs(),dates=[],d=toEST(new Date());for(let i=29;i>=0;i--){const dt=new Date(d);dt.setDate(dt.getDate()-i);dates.push(dateStrEST(dt))}
   let clean=0,total=0,best=0,cur=0;dates.forEach(date=>{const log=logs[date];if(log){total++;if(!log.drink&&!log.snack){clean++;cur++;best=Math.max(best,cur)}else cur=0}});
   document.getElementById('clean-nights-count').textContent=clean;document.getElementById('clean-nights-pct').textContent=total>0?`${Math.round(clean/total*100)}% of ${total} logged days`:'of last 30 days';document.getElementById('best-clean-streak').textContent=best}
-function renderFitnessChart(){const logs=getBBLogs(),dates=Object.keys(logs).sort();if(!dates.length){drawLineChart('fitness-chart',[],{});return}
-  const v=k=>{const r=logs;return dates.map(d=>({y:r[d][k]!=null?getTotalReps(r[d][k]):null}))};
-  const pd=v('pushups'),sd=v('squats'),ld=v('lunges'),jd=v('jumpingJacks'),skd=v('scissorsKicks'),pld=v('plankSec');
-  const av=[];dates.forEach(d=>EXERCISES.forEach(ex=>{if(logs[d][ex.key])av.push(getTotalReps(logs[d][ex.key]))}));
-  const cs=getComputedStyle(document.documentElement);
-  const gc=v=>cs.getPropertyValue(v).trim();
+let currentFitnessRoutine='blackbelt';
+const ROUTINE_COLORS=['#dbb44c','#f27068','#5db835','#e8a838','#9b8ec4','#5ba8c8','#e86fa0','#6fd8c4','#c4a65b','#7db8e8','#c87ddb','#8bc46f'];
+
+function renderVolumeChart(){
+  const bb=getBBLogs(),ul=getRoutineLogs('upper'),ll=getRoutineLogs('legs');
+  const allDates=new Set([...Object.keys(bb),...Object.keys(ul),...Object.keys(ll)]);
+  const dates=[...allDates].sort().slice(-30);
+  if(!dates.length){drawLineChart('volume-chart',[],{});return}
+  const sumLog=(log,exercises)=>{if(!log)return 0;let t=0;(exercises||Object.keys(log)).forEach(k=>{if(k==='ts')return;const v=log[k];if(Array.isArray(v))t+=v.filter(n=>n).reduce((s,n)=>s+n,0);else if(typeof v==='number')t+=v});return t};
+  const bbPts=dates.map(d=>({y:bb[d]?sumLog(bb[d]):0}));
+  const ulPts=dates.map(d=>({y:ul[d]?sumLog(ul[d]):0}));
+  const llPts=dates.map(d=>({y:ll[d]?sumLog(ll[d]):0}));
+  const totalPts=dates.map((_,i)=>({y:bbPts[i].y+ulPts[i].y+llPts[i].y}));
+  const maxV=Math.max(100,...totalPts.map(p=>p.y));
+  const cs=getComputedStyle(document.documentElement),gc=v=>cs.getPropertyValue(v).trim();
   const xLabels=dates.map(d=>new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}));
-  drawLineChart('fitness-chart',[{points:pd,color:gc('--accent'),label:'Push-ups'},{points:sd,color:gc('--red'),label:'Squats'},{points:ld,color:gc('--green'),label:'Lunges'},{points:jd,color:gc('--yellow'),label:'Jacks'},{points:skd,color:'#9b8ec4',label:'Scissors'},{points:pld,color:'#5ba8c8',label:'Plank'}],{multiLine:true,minY:0,maxY:Math.max(200,...av)+10,xLabels})}
+  drawLineChart('volume-chart',[
+    {points:totalPts,color:gc('--accent'),label:'Total'},
+    {points:bbPts,color:gc('--green'),label:'Blackbelt'},
+    {points:ulPts,color:gc('--red'),label:'Upper'},
+    {points:llPts,color:'#5ba8c8',label:'Legs'}
+  ],{multiLine:true,minY:0,maxY:maxV+20,xLabels});
+  // Stats
+  const last7=dates.slice(-7);
+  const vol7=last7.reduce((s,d,i)=>{const idx=dates.indexOf(d);return s+totalPts[idx].y},0);
+  document.getElementById('vol-7d-total').textContent=vol7.toLocaleString();
+  let sess7=0;last7.forEach(d=>{if((bb[d]&&Object.keys(bb[d]).filter(k=>k!=='ts').length)||(ul[d]&&Object.keys(ul[d]).filter(k=>k!=='ts').length)||(ll[d]&&Object.keys(ll[d]).filter(k=>k!=='ts').length))sess7++});
+  document.getElementById('vol-7d-sessions').textContent=sess7;
+}
+
+function switchFitnessRoutine(r){
+  currentFitnessRoutine=r;
+  document.querySelectorAll('#fitness-routine-switcher .tab-btn').forEach((b,i)=>b.classList.toggle('active',['blackbelt','upper','legs'][i]===r));
+  renderFitnessChart();
+}
+
+function renderFitnessChart(){
+  const r=currentFitnessRoutine,cs=getComputedStyle(document.documentElement),gc=v=>cs.getPropertyValue(v).trim();
+  if(r==='blackbelt'){
+    const logs=getBBLogs(),dates=Object.keys(logs).sort();
+    if(!dates.length){drawLineChart('fitness-chart',[],{});return}
+    const v=k=>dates.map(d=>({y:logs[d][k]!=null?getTotalReps(logs[d][k]):null}));
+    const av=[];dates.forEach(d=>EXERCISES.forEach(ex=>{if(logs[d][ex.key])av.push(getTotalReps(logs[d][ex.key]))}));
+    const xLabels=dates.map(d=>new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+    drawLineChart('fitness-chart',[{points:v('pushups'),color:gc('--accent'),label:'Push-ups'},{points:v('squats'),color:gc('--red'),label:'Squats'},{points:v('lunges'),color:gc('--green'),label:'Lunges'},{points:v('jumpingJacks'),color:gc('--yellow'),label:'Jacks'},{points:v('scissorsKicks'),color:'#9b8ec4',label:'Scissors'},{points:v('plankSec'),color:'#5ba8c8',label:'Plank'}],{multiLine:true,minY:0,maxY:Math.max(200,...av)+10,xLabels});
+  }else{
+    const rt=ROUTINES[r],logs=getRoutineLogs(r),dates=Object.keys(logs).sort();
+    if(!dates.length){drawLineChart('fitness-chart',[],{});return}
+    const av=[];dates.forEach(d=>rt.exercises.forEach(ex=>{const v=logs[d][ex.key];if(v)av.push(Array.isArray(v)?v.filter(n=>n).reduce((s,n)=>s+n,0):0)}));
+    const xLabels=dates.map(d=>new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+    const series=rt.exercises.map((ex,i)=>({
+      points:dates.map(d=>{const v=logs[d][ex.key];return{y:v?((Array.isArray(v)?v.filter(n=>n).reduce((s,n)=>s+n,0):0)||null):null}}),
+      color:ROUTINE_COLORS[i%ROUTINE_COLORS.length],label:ex.name
+    }));
+    drawLineChart('fitness-chart',series,{multiLine:true,minY:0,maxY:Math.max(50,...av)+10,xLabels});
+  }
+}
 function renderReadinessRings(){document.getElementById('readiness-rings').innerHTML=EXERCISES.map(ex=>{
   const best=getPersonalBest(ex.key),goal=GOAL_REPS[ex.key],pct=Math.min(100,(best/goal)*100),color=pct>=100?'var(--green)':pct>=70?'var(--accent)':'var(--orange)',r=24,circ=2*Math.PI*r,off=circ-(pct/100)*circ,u=ex.key==='plankSec'?'s':'';
   return`<div class="ring-container"><svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--border)" stroke-width="4"/><circle cx="30" cy="30" r="${r}" fill="none" stroke="${color}" stroke-width="4" stroke-dasharray="${circ}" stroke-dashoffset="${off}" transform="rotate(-90 30 30)" stroke-linecap="round"/><text x="30" y="33" text-anchor="middle" fill="${color}" font-size="11" font-weight="700">${Math.round(pct)}%</text></svg><div class="ring-label">${ex.icon} ${best}${u}/${goal}${u}</div></div>`}).join('')}
